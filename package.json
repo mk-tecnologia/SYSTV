@@ -1,0 +1,25 @@
+{
+  "name": "systv",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "db:migrate": "node scripts/migrate.js",
+    "db:seed": "node scripts/seed.js",
+    "db:import-sqlite": "node scripts/import-sqlite.js",
+    "test": "node --test tests/*.test.js",
+    "check": "node scripts/check.js"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.5",
+    "mysql2": "^3.24.5",
+    "nodemailer": "^10.0.15",
+    "sharp": "^0.35.5"
+  },
+  "description": "Painel de preços para múltiplas TVs com MariaDB e atualizações em tempo real"
+}

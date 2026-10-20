@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+## Description: Executa testes de integração em um banco MariaDB temporário separado
+## Usage: test
+## Example: "ddev test"
+set -euo pipefail
+export TEST_DB_USER=root
+export TEST_DB_PASSWORD=root
+npm test

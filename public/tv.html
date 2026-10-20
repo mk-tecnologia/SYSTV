@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="pt-BR">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Painel de preços</title><link rel="stylesheet" href="/style.css"></head>
+<body class="tv">
+  <header class="tv-header">
+    <div class="tv-logo-slot"><img id="logo-left" alt="Logo da empresa à esquerda" hidden><span id="logo-left-fallback" class="tv-monogram">TV</span></div>
+    <div class="tv-heading"><h1 id="store-name">Painel de preços</h1><div class="tv-subtitle"><span>PAINEL DE PREÇOS DIGITAL</span></div></div>
+    <div class="tv-logo-slot"><img id="logo-right" alt="Logo da empresa à direita" hidden><span id="logo-right-fallback" class="tv-monogram">TV</span></div>
+    <button id="fullscreen" title="Tela cheia" aria-label="Alternar tela cheia"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#expand"/></svg></button>
+  </header>
+  <section id="connection-alert" class="tv-connection-alert" role="status" aria-live="polite" hidden>
+    <div><strong id="connection-title"></strong><span id="connection-detail"></span></div>
+    <span id="connection-retry"></span><button id="retry-connection" type="button"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#refresh"/></svg> Tentar novamente</button>
+  </section>
+  <main id="board" class="board"></main>
+  <footer class="tv-footer"><span id="message"></span><span id="screen-name" class="tv-screen-badge">TV</span><span class="tv-footer-status"><i class="dot" id="tv-dot"></i><span id="tv-status">Conectando</span> · <span id="page"></span> · <time id="clock"></time></span></footer>
+  <script src="/tv.js" type="module"></script>
+</body>
+</html>

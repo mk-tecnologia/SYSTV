@@ -1,0 +1,1 @@
+ALTER TABLE screens ADD COLUMN IF NOT EXISTS color_scheme VARCHAR(16) NOT NULL DEFAULT 'classic';

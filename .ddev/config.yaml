@@ -1,0 +1,29 @@
+name: systv
+type: generic
+docroot: public
+webserver_type: generic
+nodejs_version: "24"
+database:
+  type: mariadb
+  version: "11.8"
+timezone: America/Sao_Paulo
+web_environment:
+  - NODE_ENV=development
+  - HOST=0.0.0.0
+  - PORT=3000
+  - PUBLIC_ORIGIN=https://systv.ddev.site
+  - COOKIE_SECURE=true
+  - DB_HOST=db
+  - DB_PORT=3306
+  - DB_NAME=db
+  - DB_USER=db
+  - DB_PASSWORD=db
+web_extra_exposed_ports:
+  - name: systv
+    container_port: 3000
+    http_port: 80
+    https_port: 443
+web_extra_daemons:
+  - name: systv
+    command: bash /var/www/html/.ddev/start-app.sh
+    directory: /var/www/html

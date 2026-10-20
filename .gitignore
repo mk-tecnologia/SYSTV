@@ -1,0 +1,11 @@
+data/
+.env
+node_modules/
+.env.*
+!.env.example
+backups/
+.DS_Store
+
+.idea/
+*.log
+*.sql.gz

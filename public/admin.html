@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SYSTV · Administração</title>
+  <script src="/theme.js"></script>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body class="admin auth-pending">
+  <div class="app-topbar" id="app-topbar" hidden>
+    <div class="topbar-inner">
+    <a class="brand" href="/"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#monitor"/></svg> <b>SYS<span>TV</span></b></a>
+    <span class="topbar-caption">Gestão de painéis</span>
+      <div class="account"><div class="theme-picker" role="group" aria-label="Tema da interface"><button type="button" data-theme-choice="system" aria-pressed="false" title="Acompanhar o tema do dispositivo (padrão)"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#monitor"/></svg><span>Sistema</span></button><button type="button" data-theme-choice="light" aria-pressed="false" title="Usar tema claro"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#sun"/></svg><span>Claro</span></button><button type="button" data-theme-choice="dark" aria-pressed="false" title="Usar tema escuro"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#moon"/></svg><span>Escuro</span></button></div><button type="button" id="profile-access" class="profile-access" title="Editar seu usuário"><svg class="icon" aria-hidden="true"><use href="/icons.svg#users"/></svg><span id="current-user"></span></button><button id="logout" class="secondary" hidden><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#logout"/></svg> Sair</button></div>
+    </div>
+    <nav id="navigation" aria-label="Menu principal" hidden>
+      <button class="active" data-section="products"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#grid"/></svg> Produtos e preços</button>
+      <button data-section="units" data-admin><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#ruler"/></svg> Unidades</button>
+      <button data-section="identity" data-admin><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#image"/></svg> Identidade da empresa</button>
+      <button data-section="users"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#users"/></svg> Usuários e permissões</button>
+      <button data-section="mail" data-admin><svg class="icon" aria-hidden="true"><use href="/icons.svg#mail"/></svg> E-mails</button>
+      <a id="sidebar-tv" target="_blank" rel="noopener"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#monitor"/></svg> Abrir painel da TV <svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#external"/></svg></a>
+    </nav>
+  </div>
+  <main>
+    <header id="page-heading">
+      <div><div class="eyebrow">SEU NEGÓCIO, EM EXIBIÇÃO</div><h1 id="page-title">Produtos e preços</h1><p id="page-description">Atualize aqui. Suas TVs acompanham na hora.</p></div>
+
+    </header>
+    <div id="notice" role="status" aria-live="polite"></div>
+    <section id="login" class="card login" hidden>
+      <div class="login-brand"><span class="login-brand-mark"><svg class="icon" aria-hidden="true"><use href="/icons.svg#monitor"/></svg></span><b>SYS<span>TV</span></b></div>
+      <span class="login-eyebrow">GESTÃO DE PAINÉIS DE PREÇOS</span>
+      <h2>Acesse seu painel</h2><p class="login-intro">Gerencie seus produtos e mantenha os preços das suas TVs atualizados.</p>
+      <form id="login-form">
+        <label>Usuário<input name="username" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Seu usuário" maxlength="64" required></label>
+        <label>Senha<input name="password" type="password" autocomplete="current-password" placeholder="Sua senha" maxlength="128" required></label>
+        <button><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#login"/></svg> Entrar no painel</button>
+      </form>
+      <button type="button" id="forgot-password" class="login-link">Esqueci minha senha</button>
+      <form id="login-code-form" hidden><p id="login-code-description"></p><label>Código recebido por e-mail<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="000000"></label><button>Confirmar e entrar</button><button type="button" id="login-code-back" class="login-link">Voltar ao login</button></form>
+      <form id="forgot-form" hidden><p>Enviaremos um link para o e-mail cadastrado na sua conta.</p><label>E-mail<input name="email" type="email" autocomplete="email" maxlength="254" required></label><button>Enviar link de recuperação</button><button type="button" id="forgot-back" class="login-link">Voltar ao login</button></form>
+      <form id="reset-form" hidden><p>Escolha uma nova senha para sua conta. O link vale por 10 minutos.</p><label>Nova senha<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label><label>Confirme a senha<input name="confirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label><button>Salvar nova senha</button><button type="button" id="reset-back" class="login-link">Voltar ao login</button></form>
+      <p class="login-help">Precisa de acesso? Fale com o administrador da sua empresa.</p>
+    </section>
+    <div id="workspace" hidden>
+      <section id="products-section" class="admin-section">
+        <section class="card screen-picker" aria-labelledby="screen-picker-title">
+          <div class="screen-picker-heading"><div><span class="eyebrow">SUAS TELAS</span><h2 id="screen-picker-title">Qual TV você quer atualizar?</h2><p>Selecione uma tela para editar os produtos e preços que aparecem nela.</p></div><button class="secondary" id="add-screen" data-admin><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#plus"/></svg> Cadastrar TV</button></div>
+          <fieldset id="screen-options" class="screen-options"><legend class="sr-only">Escolha a TV para editar</legend></fieldset>
+          <p id="no-permissions" class="permission-message" hidden>Você ainda não possui TVs autorizadas. Solicite acesso ao administrador.</p>
+        </section>
+        <section class="stats">
+          <div class="card"><span>Produtos na TV</span><strong id="count">0</strong></div>
+          <div class="card"><span>Ofertas em destaque</span><strong id="offers">0</strong></div>
+          <div class="card"><span>TVs disponíveis</span><strong id="screens-count">0</strong></div>
+          <div class="card"><span>Sincronização</span><strong class="live" id="connection">Conectando…</strong></div>
+        </section>
+        <section class="toolbar catalog-toolbar">
+          <div class="editing-context"><span>EDITANDO PRODUTOS DE</span><div class="editing-screen-line"><strong id="editing-screen" aria-live="polite"></strong><button id="rename-screen" class="secondary small" data-admin><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#settings"/></svg> Configurar TV</button></div><span id="rotation-summary"></span></div>
+          <a id="open-screen" class="button secondary" target="_blank" rel="noopener">Visualizar painel <svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#external"/></svg></a>
+          <button id="add-product"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#plus"/></svg> Adicionar produto</button>
+        </section>
+        <div class="product-workspace">  <section id="editor" class="product-editor"><form id="product-form">
+    <div class="dialog-heading"><h2 id="editor-title">Novo produto</h2><button type="button" class="secondary" id="close-editor" aria-label="Limpar edição e cadastrar novo produto"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#plus"/></svg></button></div>
+    <p class="editor-intro">Cadastre ao lado da prévia ou selecione um produto do painel para editar.</p><p id="product-screen-context" class="product-screen-context"></p><div id="product-page-context" class="page-advice" role="status" aria-live="polite"></div>
+    <input name="id" type="hidden"><label>Nome do produto<input name="name" maxlength="120" required></label>
+    <div class="form-row"><label>Preço (R$)<input name="price" type="text" inputmode="decimal" placeholder="49,90" required></label><label>Unidade<select name="unit" required><button type="button"><selectedcontent></selectedcontent></button></select></label><label>Ordem<input name="position" type="number" min="0" max="4294967295" step="1" required></label></div>
+    <label class="check"><input name="highlight" type="checkbox"> Destacar como oferta na TV</label><p id="form-error" role="alert"></p><button><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#save"/></svg> Salvar e atualizar TV</button>
+  </form></section><section class="card catalog">
+          <div id="catalog-pages" class="page-advice" role="status" aria-live="polite"></div><div class="catalog-heading"><div><h2>Produtos desta TV</h2><p id="catalog-description">As alterações serão enviadas à TV selecionada.</p></div><input id="search" type="search" placeholder="Buscar produto…" aria-label="Buscar produto"></div>
+          <div class="catalog-views"><div id="catalog-page-tabs" class="catalog-page-tabs" role="group" aria-label="Página do painel"></div><div class="catalog-view-switch" role="group" aria-label="Modo de visualização"><button type="button" id="view-preview" aria-pressed="true">Prévia da TV</button><button type="button" id="view-list" aria-pressed="false">Lista</button></div></div>
+          <div id="catalog-preview" class="catalog-preview"><p class="preview-instruction">Clique em um produto para editar. A posição corresponde ao painel de duas colunas da TV.</p><div id="catalog-preview-screen" class="catalog-preview-screen"><div id="catalog-preview-company" class="catalog-preview-company"></div><div id="catalog-preview-grid" class="catalog-preview-grid"></div><div class="catalog-preview-footer"><span id="catalog-preview-name"></span><span id="catalog-preview-page"></span></div></div></div>
+          <div id="catalog-list" class="table-wrap" hidden><table><thead><tr><th>PRODUTO</th><th>PREÇO</th><th>UNIDADE</th><th>ORDEM</th><th>EXIBIÇÃO NA TV</th><th>AÇÕES</th></tr></thead><tbody id="products"></tbody></table></div>
+          <p id="empty" hidden>Nenhum produto encontrado nesta TV.</p>
+        </section>
+        </div><div class="screen-actions" data-admin><button id="delete-screen" class="danger secondary"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#delete"/></svg> Excluir TV selecionada</button></div>
+      </section>
+      <section id="units-section" class="admin-section" hidden>
+        <section class="card catalog"><div class="catalog-heading"><div><h2>Unidades de venda</h2><p>Cadastre as unidades disponíveis para os produtos de todas as TVs. Unidades em uso não podem ser excluídas.</p></div><button id="add-unit"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#plus"/></svg> Nova unidade</button></div>
+        <div class="table-wrap"><table><thead><tr><th>SIGLA</th><th>DESCRIÇÃO</th><th>PRODUTOS</th><th>AÇÕES</th></tr></thead><tbody id="units"></tbody></table></div></section>
+      </section>
+<section id="mail-section" class="admin-section" hidden>
+ <div class="security-layout"><section class="card security-card"><div class="security-card-heading"><span class="config-mark"><svg class="icon" aria-hidden="true"><use href="/icons.svg#mail"/></svg></span><div><h2>Envio de e-mails</h2><p>Recuperação de senha e códigos de verificação.</p></div></div>
+ <form id="mail-form"><label class="check"><input name="enabled" type="checkbox"> Ativar envio de e-mails</label>
+ <label>Provedor<select name="provider"><button type="button"><selectedcontent></selectedcontent></button><option value="custom">SMTP personalizado / relay</option><option value="gmail">Gmail / Google Workspace</option><option value="microsoft">Microsoft 365 / Outlook</option></select></label>
+ <label data-mail-account hidden>Tipo de conta Microsoft<select name="microsoft_account"><button type="button"><selectedcontent></selectedcontent></button><option value="business">Microsoft 365 empresarial</option><option value="personal">Outlook.com / Hotmail pessoal</option></select></label>
+ <div class="form-row"><label>Servidor SMTP<input name="host" placeholder="smtp.exemplo.com" maxlength="253" required></label><label>Porta<input name="port" type="number" min="1" max="65535" value="587" required></label></div>
+ <div class="form-row"><label>Segurança<select name="security"><button type="button"><selectedcontent></selectedcontent></button><option value="starttls">STARTTLS</option><option value="tls">TLS direto</option><option value="none">Relay local sem TLS</option></select></label><label>Autenticação<select name="auth"><button type="button"><selectedcontent></selectedcontent></button><option value="password">Usuário e senha</option><option value="none">Sem autenticação (relay)</option><option value="oauth">OAuth 2.0 (refresh token)</option><option value="microsoft-app">Microsoft OAuth (aplicativo)</option></select></label></div>
+ <label data-mail-auth>Conta SMTP<input name="username" type="email" maxlength="254" autocomplete="off" placeholder="envio@empresa.com"></label>
+ <label data-mail-password><span id="mail-password-label">Senha SMTP</span><input name="password" type="password" autocomplete="new-password" maxlength="12000"><small>Deixe vazio para manter a credencial salva da mesma conta.</small></label>
+ <div data-mail-oauth hidden><label>Client ID do aplicativo<input name="client_id" maxlength="200" autocomplete="off"></label><label>Client secret<input name="client_secret" type="password" autocomplete="new-password" maxlength="12000"><small>Deixe vazio para manter o segredo salvo.</small></label><label data-mail-tenant>Tenant ID<input name="tenant_id" maxlength="100" placeholder="ID do diretório Microsoft"></label><label data-mail-refresh>Refresh token<input name="refresh_token" type="password" autocomplete="new-password" maxlength="12000"><small>Token obtido no consentimento OAuth do provedor. Deixe vazio para manter o salvo.</small></label></div>
+ <div class="form-row"><label>Nome do remetente<input name="from_name" maxlength="120" value="SYSTV" required></label><label>E-mail do remetente<input name="from_email" type="email" maxlength="254" required></label></div>
+ <p id="mail-error" class="form-feedback" role="status"></p><button>Salvar configuração</button></form></section>
+ <div><section class="card security-card"><h2>Autenticação do provedor</h2><div id="mail-provider-help"></div><p class="security-note">As credenciais ficam criptografadas no banco. Trocar a conta ou o método de autenticação exige novas credenciais.</p></section>
+ <section class="card security-card"><h2>Testar o envio</h2><p>Salve a configuração antes do teste. O recebimento confirma também o remetente e as permissões de envio.</p><form id="mail-test-form"><label>Enviar teste para<input name="email" type="email" maxlength="254" required></label><p id="mail-test-result" class="form-feedback" role="status"></p><button class="secondary">Enviar e-mail de teste</button></form></section></div></div></section>
+      <section id="identity-section" class="admin-section" hidden>
+        <section class="card settings">
+          <h2>Nome e mensagem da empresa</h2><p>O nome aparece no centro do cabeçalho. As alterações são enviadas a todas as TVs.</p>
+          <form id="settings-form"><label>Nome da empresa no cabeçalho<input name="name" maxlength="120" required></label><label>Mensagem do rodapé<input name="message" maxlength="180" required></label><button><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#save"/></svg> Salvar identidade</button></form>
+        </section>
+        <section class="card settings">
+          <h2>Logos do cabeçalho</h2><p>Envie uma imagem para cada lado. PNG, JPEG ou WebP, até 5 MB. As imagens mantêm a proporção e ficam dentro das áreas reservadas, sem empurrar o nome ou os preços.</p>
+          <div class="logo-grid">
+            <form class="logo-form" data-side="left"><h3>Logo da esquerda</h3><div class="logo-preview"><img id="preview-left" alt="Logo da esquerda" hidden><span id="placeholder-left">Nenhuma imagem cadastrada</span></div><label>Selecionar imagem<input name="image" type="file" accept="image/png,image/jpeg,image/webp" required></label><div class="logo-actions"><button><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#upload"/></svg> Enviar logo</button><button type="button" class="secondary danger remove-logo" data-side="left"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#delete"/></svg> Remover</button></div></form>
+            <form class="logo-form" data-side="right"><h3>Logo da direita</h3><div class="logo-preview"><img id="preview-right" alt="Logo da direita" hidden><span id="placeholder-right">Nenhuma imagem cadastrada</span></div><label>Selecionar imagem<input name="image" type="file" accept="image/png,image/jpeg,image/webp" required></label><div class="logo-actions"><button><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#upload"/></svg> Enviar logo</button><button type="button" class="secondary danger remove-logo" data-side="right"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#delete"/></svg> Remover</button></div></form>
+          </div>
+        </section>
+      </section>
+      <section id="users-section" class="admin-section" hidden>
+        <section class="card catalog">
+          <div class="catalog-heading"><div><h2>Usuários e permissões</h2><p>Administradores têm acesso completo. Operadores alteram somente as TVs selecionadas.</p></div><button id="add-user" data-admin><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#plus"/></svg> Novo usuário</button></div>
+          <div class="table-wrap"><table><thead><tr><th>USUÁRIO</th><th>LOGIN / E-MAIL</th><th>PERFIL</th><th>TVS PERMITIDAS</th><th>STATUS</th><th>AÇÕES</th></tr></thead><tbody id="users"></tbody></table></div>
+        </section>
+      </section>
+    </div>
+    <footer>SYSTV <span>Preços sempre atualizados. Gestão descomplicada.</span></footer>
+  </main>
+
+  <dialog id="unit-dialog"><form id="unit-form"><div class="dialog-heading"><h2 id="unit-title">Nova unidade</h2><button type="button" class="secondary" id="close-unit" aria-label="Fechar"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#close"/></svg></button></div><label>Sigla<input name="code" maxlength="8" pattern="[a-zA-Z0-9]{1,8}" placeholder="FD" required><small>Até 8 letras ou números. Ex.: KG, UN, FD.</small></label><label>Descrição<input name="name" maxlength="80" placeholder="Fardo" required></label><p>Ao alterar a sigla, os produtos que usam essa unidade serão atualizados automaticamente.</p><p id="unit-error" role="alert"></p><button><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#save"/></svg> Salvar unidade</button></form></dialog>
+  <dialog id="screen-dialog" aria-labelledby="screen-dialog-title"><form id="screen-form">
+    <div class="screen-config-header"><span class="config-mark"><svg class="icon" aria-hidden="true"><use href="/icons.svg#monitor"/></svg></span><div><span class="eyebrow">PAINEL DE EXIBIÇÃO</span><h2 id="screen-dialog-title">Cadastrar uma TV</h2><p>Personalize a experiência desta tela.</p></div><button type="button" id="close-screen" class="secondary" aria-label="Fechar configuração"><svg class="icon" aria-hidden="true"><use href="/icons.svg#close"/></svg></button></div>
+    <div class="screen-config-body"><div class="screen-config-fields">
+      <section class="config-section"><h3>Identificação da TV</h3><p>Escolha um nome que ajude sua equipe a reconhecer o local.</p><label>Nome da localização<input name="name" maxlength="50" placeholder="Ex.: Balcão do açougue" required></label><small>Esse nome aparece no painel e nas permissões dos usuários.</small></section>
+      <section class="config-section"><h3>Troca de páginas</h3><p>Quando o catálogo ocupar mais de uma tela, as páginas alternam automaticamente.</p><label>Intervalo de exibição<div class="interval-input"><input name="page_interval_seconds" type="number" min="5" max="300" step="1" value="15" required><span>segundos</span></div><small>Entre 5 e 300 segundos.</small></label></section>
+    </div><section class="config-appearance"><div class="config-section-heading"><h3>Aparência do painel</h3><p>Escolha a combinação de cores para esta TV.</p></div><div id="screen-palette-preview" class="screen-palette-preview" aria-label="Prévia do painel"><div class="preview-header">Sua empresa</div><div class="preview-product"><span>Produto em oferta</span><strong>R$ 29,90 <small>KG</small></strong></div><div class="preview-product preview-normal"><span>Produto regular</span><strong>R$ 39,90 <small>UN</small></strong></div><div class="preview-footer"><span id="preview-screen-name">Nome da TV</span></div></div><fieldset class="palette-field"><legend class="sr-only">Esquema de cores do painel</legend><div id="palette-options" class="palette-options"></div></fieldset><p class="preview-caption">Prévia ilustrativa · As cores são aplicadas ao salvar.</p></section></div>
+    <div class="screen-config-actions"><p id="screen-error" role="alert"></p><div><button type="button" class="secondary" id="cancel-screen">Cancelar</button><button id="save-screen">Cadastrar TV</button></div></div>
+  </form></dialog>
+  <dialog id="user-dialog"><form id="user-form">
+    <div class="dialog-heading"><h2 id="user-title">Novo usuário</h2><button type="button" class="secondary" id="close-user" aria-label="Fechar"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#close"/></svg></button></div>
+    <input name="id" type="hidden">
+    <label>Nome<input name="name" maxlength="120" autocomplete="off" required></label>
+    <label>Login<input name="username" minlength="3" maxlength="64" pattern="[a-zA-Z0-9._-]{3,64}" autocomplete="off" required><small>Use letras sem acentos, números, ponto, hífen ou sublinhado.</small></label>
+    <label>E-mail<input name="email" type="email" maxlength="254" autocomplete="email"><small>Necessário para recuperação de senha e 2FA. Usuários existentes podem continuar sem e-mail.</small></label>
+    <label id="user-current-password" hidden>Senha atual<input name="current_password" type="password" maxlength="128" autocomplete="current-password"><small>Confirme sua senha para salvar as alterações no seu usuário.</small></label>
+    <label>Senha<input name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password"><small id="password-help">Mínimo de 8 caracteres.</small></label>
+    <div class="form-row"><label>Perfil<select name="role"><button type="button"><selectedcontent></selectedcontent></button><option value="editor">Operador</option><option value="admin">Administrador</option></select></label><label class="check"><input name="active" type="checkbox" checked> Usuário ativo</label></div>
+    <fieldset id="permissions-field"><legend>TVs que este usuário pode alterar</legend><div id="user-screen-options"></div><p>Sem seleção, o operador não poderá alterar nenhuma TV.</p></fieldset>
+    <p id="admin-permissions" hidden>Administradores podem gerenciar todas as TVs, usuários e a identidade da empresa.</p>
+    <p id="user-error" role="alert"></p><button><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#save"/></svg> Salvar usuário</button>
+  </form><section id="user-security" class="user-security"><div class="security-card-heading"><span class="config-mark"><svg class="icon" aria-hidden="true"><use href="/icons.svg#shield"/></svg></span><div><h2>Segurança do usuário</h2><p>Proteção adicional por e-mail, ativada por você.</p></div></div><span id="account-2fa-status" class="price-status is-normal">Carregando…</span><p id="account-2fa-help" class="security-note"></p><form id="account-2fa-form"><p id="account-2fa-result" class="form-feedback" role="status"></p><button id="account-2fa-action">Ativar 2FA por e-mail</button></form><form id="account-2fa-code-form" hidden><label>Confirme o código recebido<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required></label><button>Confirmar ativação</button><button type="button" id="account-2fa-cancel" class="secondary">Cancelar</button></form></section><p id="user-security-other" class="security-note" hidden></p></dialog>
+  <script src="/admin.js" type="module"></script>
+</body>
+</html>
