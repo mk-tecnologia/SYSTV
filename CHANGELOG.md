@@ -1,5 +1,9 @@
 # Histórico
 
+## 2.1.1
+
+- Corrige a seleção de versão no bootstrap após identificar o sistema operacional.
+
 ## 2.1.0
 
 - Instalador por link, com assistente e download de release estável verificada.

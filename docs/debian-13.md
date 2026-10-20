@@ -68,7 +68,7 @@ Após editar `systv.env`, reinicie `systv`.
 
 ```bash
 systvctl update
-systvctl update --version v2.1.0
+systvctl update --version v2.1.1
 # Para repositório privado, por exemplo:
 GITHUB_TOKEN="$(gh auth token)" systvctl update
 ```
@@ -91,7 +91,7 @@ novo servidor; os dados não serão sobrescritos por este instalador.
 ```bash
 systvctl rollback
 ls -1 /opt/systv/releases
-systvctl rollback v2.1.0-20261020T120000Z-1234
+systvctl rollback v2.1.1-20261020T120000Z-1234
 ```
 
 O rollback cria backup e troca somente o código. Se a versão anterior não

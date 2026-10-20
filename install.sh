@@ -3,7 +3,7 @@
 set -Eeuo pipefail
 umask 077
 REPOSITORY=mk-tecnologia/systv
-VERSION=latest
+RELEASE_VERSION=latest
 ARGS=()
 usage() {
   cat <<'HELP'
@@ -16,7 +16,7 @@ HELP
 }
 while (($#)); do
   case $1 in
-    --version) [[ $# -ge 2 ]] || { echo 'Falta a versão.' >&2; exit 1; }; VERSION=$2; shift 2 ;;
+    --version) [[ $# -ge 2 ]] || { echo 'Falta a versão.' >&2; exit 1; }; RELEASE_VERSION=$2; shift 2 ;;
     -h|--help) usage; exit 0 ;;
     *) ARGS+=("$1"); shift ;;
   esac
@@ -25,7 +25,7 @@ done
 # shellcheck disable=SC1091
 source /etc/os-release
 [[ $ID == debian && ${VERSION_ID%%.*} == 13 ]] || { echo 'É necessário Debian 13.' >&2; exit 1; }
-[[ $VERSION == latest || $VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Use latest ou uma tag vX.Y.Z.' >&2; exit 1; }
+[[ $RELEASE_VERSION == latest || $RELEASE_VERSION =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Use latest ou uma tag vX.Y.Z.' >&2; exit 1; }
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y ca-certificates curl python3
@@ -39,13 +39,13 @@ if [[ -n ${GITHUB_TOKEN:-} ]]; then
 fi
 API=https://api.github.com/repos/$REPOSITORY
 ENDPOINT=$API/releases/latest
-[[ $VERSION == latest ]] || ENDPOINT=$API/releases/tags/$VERSION
+[[ $RELEASE_VERSION == latest ]] || ENDPOINT=$API/releases/tags/$RELEASE_VERSION
 if ! curl --config "$CURL_CONFIG" "$ENDPOINT" -o "$WORK/release.json"; then
   echo 'Não foi possível consultar a release. Em repositório privado, informe GITHUB_TOKEN com Contents: read.' >&2
   exit 1
 fi
 # IDs dos assets vêm da API; nenhum link arbitrário do JSON recebe o token.
-python3 - "$WORK/release.json" "$WORK" "$VERSION" <<'PY'
+python3 - "$WORK/release.json" "$WORK" "$RELEASE_VERSION" <<'PY'
 import json, pathlib, re, sys
 release = json.loads(pathlib.Path(sys.argv[1]).read_text())
 tag = release['tag_name']
