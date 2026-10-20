@@ -70,7 +70,8 @@ function setUser(user) {
   $('workspace').hidden = !user;
   $('navigation').hidden = !user;
   $('logout').hidden = !user;
-  $('current-user').textContent = user ? `${user.name} · ${user.role === 'admin' ? 'Administrador' : 'Operador'}` : '';
+  $('current-user').textContent = user?.name || '';
+  $('current-user-role').textContent = user ? user.role === 'admin' ? 'Administrador' : 'Operador' : '';
   document.querySelectorAll('[data-admin]').forEach(el => el.hidden = user?.role !== 'admin');
   if (!user || user.role !== 'admin' && section !== 'users') section = 'products';
   if (!user) securityUI?.clear();
@@ -85,14 +86,14 @@ async function refreshVersion() {
   versionPending = true;
   try {
     const info = await api('version');
-    $('installed-version').textContent = `SYSTV v${info.current}`;
-    $('version-status').textContent = info.update_available ? `Nova versão: v${info.latest} ↗` : info.status === 'checked' ? 'Versão atualizada' : 'Verificação indisponível';
+    $('installed-version').textContent = `v${info.current}`;
+    $('version-status').textContent = info.update_available ? `Nova versão: v${info.latest} ↗` : info.status === 'checked' ? 'Atualizado' : 'Sem verificação';
     $('version-box').classList.toggle('has-update', info.update_available);
     $('version-box').href = info.release_url;
-    $('version-box').title = info.update_available ? 'Veja as novidades. Para atualizar, peça ao responsável pelo servidor para executar systvctl update.' : 'Consultar versões publicadas no GitHub';
+    $('version-box').title = info.status === 'unavailable' ? 'Não foi possível consultar atualizações. Verifique o acesso do servidor à internet.' : info.update_available ? 'Veja as novidades. Para atualizar, peça ao responsável pelo servidor para executar systvctl update.' : 'Consultar versões publicadas no GitHub';
     versionCheckedAt = Date.now();
   } catch {
-    $('version-status').textContent = 'Verificação indisponível';
+    $('version-status').textContent = 'Sem verificação';
   } finally { versionPending = false; }
 }
 

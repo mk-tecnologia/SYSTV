@@ -1,5 +1,10 @@
 # Histórico
 
+## 2.4.1
+
+- Reorganiza cabeçalho com versão integrada à identidade, controles de conta agrupados e navegação alinhada ao conteúdo.
+- Ajusta hierarquia, espaçamento, temas e disposição em telas pequenas.
+
 ## 2.4.0
 
 - Versão instalada em destaque no cabeçalho do painel, com aviso e link para novas versões.
