@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Executado somente em um container descartável Debian 13 com systemd real.
 set -Eeuo pipefail
-SOURCE=/tmp/systv-source
+SOURCE=/var/tmp/systv-source
 cd "$SOURCE"
 bash deploy/debian/install.sh --origin http://127.0.0.1
 systvctl doctor

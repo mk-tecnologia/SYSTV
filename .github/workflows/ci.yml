@@ -47,23 +47,18 @@ jobs:
             --tmpfs /run --tmpfs /run/lock \
             -v /sys/fs/cgroup:/sys/fs/cgroup:rw systv-debian-test
           for attempt in $(seq 1 30); do
-            if timeout 15 docker exec systv-debian systemctl is-system-running --wait; then break; fi
-            if docker exec systv-debian test -d /run/systemd/system; then break; fi
+            state=$(docker exec systv-debian systemctl is-system-running 2>/dev/null || true)
+            if [[ "$state" == running || "$state" == degraded ]]; then break; fi
             sleep 1
           done
-          docker exec systv-debian mkdir -p /tmp/systv-source
-          docker cp dist/systv-v$(cat VERSION).tar.gz systv-debian:/tmp/systv.tar.gz
-          docker exec systv-debian tar -xzf /tmp/systv.tar.gz -C /tmp/systv-source
-          docker cp tests/deploy/smoke.sh systv-debian:/tmp/smoke.sh
+          [[ "$state" == running || "$state" == degraded ]]
+          docker exec systv-debian mkdir -p /var/tmp/systv-source
+          docker cp dist/systv-v$(cat VERSION).tar.gz systv-debian:/var/tmp/systv.tar.gz
+          docker exec systv-debian tar -xzf /var/tmp/systv.tar.gz -C /var/tmp/systv-source
+          docker cp tests/deploy/smoke.sh systv-debian:/var/tmp/smoke.sh
       - name: Instalar, autenticar, atualizar, reverter e reiniciar
         run: |
-          for attempt in $(seq 1 30); do
-            if timeout 15 docker exec systv-debian systemctl is-system-running --wait; then break; fi
-            # Um container pode reportar degraded mesmo com systemd operacional.
-            if docker exec systv-debian test -d /run/systemd/system; then break; fi
-            sleep 1
-          done
-          docker exec systv-debian bash /tmp/smoke.sh
+          docker exec systv-debian bash /var/tmp/smoke.sh
       - name: Diagnóstico em falha
         if: failure()
         run: |
