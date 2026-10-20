@@ -234,3 +234,15 @@ ser conferidos no destino.
 
 Se um fork for privado, o bootstrap aceita `GITHUB_TOKEN` com leitura de conteúdo
 para os downloads. O token não é persistido nem passado à aplicação.
+
+## Nome curto mostrando “Welcome to nginx”
+
+Use sempre a origem configurada, por exemplo `https://tv.empresa.intranet`.
+A partir da versão 2.2.1, acessar `http://tv` redireciona ao endereço completo,
+preservando o caminho e os parâmetros. O certificado continua valendo para
+`tv.empresa.intranet`; acesso direto por `https://tv` pode mostrar erro de nome
+no certificado. Não é necessário remover o site padrão global do Nginx.
+
+Para aplicar o ajuste a uma instalação existente com certificado local, baixe
+o instalador atual e execute `--configure-web --tls self-signed`. Um certificado
+local válido para o mesmo nome é preservado. Banco e credenciais não são alterados.

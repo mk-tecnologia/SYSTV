@@ -1,5 +1,10 @@
 # Histórico
 
+## 2.2.1
+
+- Redireciona o nome curto HTTP ao endereço canônico, preservando caminho e parâmetros.
+- Evita a página padrão do Nginx ao acessar o primeiro rótulo do hostname configurado.
+
 ## 2.2.0
 
 - HTTPS local como padrão para URLs HTTPS, sem exigir servidor público.

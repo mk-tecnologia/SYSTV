@@ -188,6 +188,19 @@ $PROXY
 }
 NGINX
 fi
+# O nome curto entra somente por HTTP e redireciona à origem canônica.
+# O certificado continua vinculado ao nome completo; não altera outros sites/default.
+if [[ $SITE_HOST == *.* && ! $SITE_HOST =~ ^[0-9.]+$ ]]; then
+  SHORT_HOST=${SITE_HOST%%.*}
+  cat >> /etc/nginx/sites-available/systv <<NGINX
+server {
+    listen 80;
+    listen [::]:80;
+    server_name $SHORT_HOST;
+    return 302 $ORIGIN\$request_uri;
+}
+NGINX
+fi
 chmod 0644 /etc/nginx/sites-available/systv
 if [[ ! -L /etc/nginx/sites-enabled/systv ]]; then
   [[ ! -e /etc/nginx/sites-enabled/systv ]] || { echo 'Arquivo conflitante em sites-enabled.' >&2; false; }

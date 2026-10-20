@@ -19,6 +19,11 @@ PY
 bash "$SOURCE/deploy/debian/install.sh" --configure-web --tls self-signed
 curl --fail --silent --show-error --noproxy '*' --cacert /etc/systv/tls/server.crt \
   --resolve tv.empresa.intranet:443:127.0.0.1 https://tv.empresa.intranet/api/health
+# O nome curto deve abrir o sistema pelo endereço correto, preservando path/query.
+SHORT_HEADERS=$(curl --silent --show-error --noproxy '*' -D - -o /dev/null \
+  -H 'Host: tv' 'http://127.0.0.1/tv?screen=tv01')
+printf '%s' "$SHORT_HEADERS" | grep -q '302'
+printf '%s' "$SHORT_HEADERS" | grep -qi 'Location: https://tv.empresa.intranet/tv?screen=tv01'
 [[ $(credentials_digest) == "$ORIGINAL_SECRETS" ]]
 [[ $(cat /opt/systv/current/VERSION) == "$FIRST_VERSION" ]]
 [[ $(mariadb -N -e 'SELECT COUNT(*) FROM systv.users') == "$FIRST_USERS" ]]
@@ -60,6 +65,10 @@ fi
 rm /etc/nginx/conf.d/systv-test-invalid.conf
 [[ $(sha256sum /etc/systv/systv.env) == "$ENV_HASH" ]]
 [[ $(sha256sum /etc/nginx/sites-available/systv) == "$NGINX_HASH" ]]
+systvctl web --origin http://tv.empresa.intranet --tls none
+SHORT_HEADERS=$(curl --silent --show-error --noproxy '*' -D - -o /dev/null \
+  -H 'Host: tv' 'http://127.0.0.1/tv?screen=tv01')
+printf '%s' "$SHORT_HEADERS" | grep -qi 'Location: http://tv.empresa.intranet/tv?screen=tv01'
 systvctl web --origin http://127.0.0.1 --tls none
 [[ $(credentials_digest) == "$ORIGINAL_SECRETS" ]]
 grep -q '^COOKIE_SECURE=false$' /etc/systv/systv.env
