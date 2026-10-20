@@ -9,8 +9,9 @@ if [[ ! -L /opt/systv/current ]]; then
 fi
 systvctl doctor
 # Exercita autenticação, inicialização vazia e permissões do serviço real.
-if [[ -f /etc/systv/tls/server.crt ]]; then export NODE_EXTRA_CA_CERTS=/etc/systv/tls/server.crt; fi
-/opt/systv/node/bin/node --env-file=/etc/systv/systv.env --input-type=module <<'JS'
+NODE_TEST_CA=''
+[[ ! -f /etc/systv/tls/server.crt ]] || NODE_TEST_CA=/etc/systv/tls/server.crt
+NODE_EXTRA_CA_CERTS="$NODE_TEST_CA" /opt/systv/node/bin/node --env-file=/etc/systv/systv.env --input-type=module <<'JS'
 import assert from 'node:assert/strict';
 const state = await (await fetch(process.env.PUBLIC_ORIGIN + '/api/state')).json();
 assert.equal(state.products.length, 0);

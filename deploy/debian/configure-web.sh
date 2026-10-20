@@ -114,7 +114,8 @@ rollback() {
   tar -xzf "$SNAPSHOT" -C / || true
   if [[ $HAD_SITE == false ]]; then rm -f /etc/nginx/sites-available/systv; fi
   if [[ $HAD_LINK == false ]]; then rm -f /etc/nginx/sites-enabled/systv; fi
-  nginx -t && systemctl reload nginx || true
+  if nginx -t; then systemctl reload nginx || true; fi
+  systemctl reset-failed systv || true
   systemctl restart systv || true
   echo "Configuração anterior restaurada. Snapshot: $SNAPSHOT" >&2
   exit "$status"
@@ -199,6 +200,7 @@ if [[ $TLS_MODE == letsencrypt ]]; then
   certbot --nginx --non-interactive --agree-tos --redirect --email "$EMAIL" -d "$SITE_HOST"
   systemctl enable --now certbot.timer
 fi
+systemctl reset-failed systv
 systemctl restart systv
 for _attempt in {1..30}; do
   if curl --fail --silent http://127.0.0.1:3000/api/health > /dev/null; then break; fi

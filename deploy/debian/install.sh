@@ -96,6 +96,7 @@ on_error() {
   if [[ -n $OLD_RELEASE && ( $SWITCHED == true || $STOPPED == true ) ]]; then
     ln -s "$OLD_RELEASE" /opt/systv/.current-recovery-$$
     mv -Tf /opt/systv/.current-recovery-$$ /opt/systv/current
+    systemctl reset-failed systv || true
     systemctl restart systv || true
     echo 'Código anterior reativado. Migrações não são desfeitas; confira o banco e o backup.' >&2
   fi
@@ -199,6 +200,7 @@ install -m 0644 "$SOURCE/deploy/debian/systv-backup.timer" /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable --now systv-backup.timer
 systemctl enable systv nginx
+systemctl reset-failed systv
 systemctl restart systv
 if [[ $MODE == install ]]; then
   WEB_ARGS=(--origin "$ORIGIN" --tls "$TLS_MODE")

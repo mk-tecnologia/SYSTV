@@ -72,6 +72,7 @@ case "$COMMAND" in
       trap - ERR
       ln -s "$OLD" /opt/systv/.rollback-recovery-$$
       mv -Tf /opt/systv/.rollback-recovery-$$ /opt/systv/current
+      systemctl reset-failed systv || true
       systemctl restart systv || true
       echo 'Rollback falhou; código anterior reativado. Confira o banco e o backup.' >&2
       exit 1
@@ -81,6 +82,7 @@ case "$COMMAND" in
     /usr/local/sbin/systvctl backup
     ln -s "$TARGET" /opt/systv/.rollback-$$
     mv -Tf /opt/systv/.rollback-$$ /opt/systv/current
+    systemctl reset-failed systv
     systemctl restart systv
     for _attempt in {1..30}; do
       if curl --fail --silent http://127.0.0.1:3000/api/health >/dev/null; then break; fi
