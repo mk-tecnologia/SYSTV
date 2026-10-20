@@ -134,8 +134,9 @@ fieldset p { margin-top: var(--space-3); font-size: 12px; }
 .theme-picker button[aria-pressed='true'], .catalog-view-switch button[aria-pressed='true'] { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-line); }
 .profile-access, #logout { min-height: var(--control-height); border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); padding: var(--space-1) var(--space-3); }
 .profile-access:hover, #logout:hover { background: var(--surface-hover); }
+.account .theme-picker, .profile-access, #logout { height: var(--control-height); }
 .profile-access { text-align: left; max-width: 220px; }
-.profile-copy { display: flex; flex-direction: column; min-width: 0; }
+.profile-copy { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
 #current-user { font-size: 12px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 #current-user-role { font-size: 10px; font-weight: 400; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .app-topbar nav { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); padding-block: var(--space-3); border-top: 1px solid var(--line); }
