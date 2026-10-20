@@ -46,6 +46,11 @@ jobs:
           docker run -d --name systv-debian --privileged --cgroupns=host \
             --tmpfs /run --tmpfs /run/lock \
             -v /sys/fs/cgroup:/sys/fs/cgroup:rw systv-debian-test
+          for attempt in $(seq 1 30); do
+            if timeout 15 docker exec systv-debian systemctl is-system-running --wait; then break; fi
+            if docker exec systv-debian test -d /run/systemd/system; then break; fi
+            sleep 1
+          done
           docker exec systv-debian mkdir -p /tmp/systv-source
           docker cp dist/systv-v$(cat VERSION).tar.gz systv-debian:/tmp/systv.tar.gz
           docker exec systv-debian tar -xzf /tmp/systv.tar.gz -C /tmp/systv-source
