@@ -1,5 +1,10 @@
 # Histórico
 
+## 2.4.2
+
+- Padroniza controles de tema, perfil e saída com altura de 44px, borda e raio de 7px dos botões secundários.
+- Unifica fundos, seleção, hover e foco nos temas claro e escuro, removendo a moldura retangular do perfil.
+
 ## 2.4.1
 
 - Reorganiza cabeçalho com versão integrada à identidade, controles de conta agrupados e navegação alinhada ao conteúdo.

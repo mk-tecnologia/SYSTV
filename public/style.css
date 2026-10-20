@@ -293,25 +293,40 @@ html[data-theme="dark"] .admin .profile-access #current-user{color:inherit}
 .version-box:hover strong,.version-box:hover span{color:#007f74}.version-box:focus-visible{outline:2px solid #009e93;outline-offset:4px;border-radius:2px}
 .version-box.has-update span{color:#936000;font-weight:650}.version-box.has-update span::before{background:#c48714}
 .admin .topbar-inner .account{display:flex;flex-direction:row;flex-wrap:nowrap;align-items:center;justify-content:flex-end;gap:16px;margin:0;min-width:0;flex:none}
-.admin .topbar-inner .theme-picker{order:0;flex-basis:auto;flex-shrink:0;padding:3px;border-radius:9px}
-.admin .topbar-inner .theme-picker button{min-height:30px;padding:7px 9px;border-radius:6px}
-.admin .topbar-inner .profile-access{border-left:1px solid #dce6e8;border-radius:0;padding:4px 0 4px 18px;max-width:240px;gap:10px;min-width:0}
+.admin .topbar-inner .theme-picker{order:0;flex-basis:auto;flex-shrink:0}
+.admin .topbar-inner .profile-access{padding:6px 12px;max-width:240px;gap:10px;min-width:0}
 .admin .topbar-inner .profile-access>.icon{width:19px;height:19px;flex-shrink:0;color:#7d959c}
 .profile-copy{display:flex;flex-direction:column;gap:3px;min-width:0}
 .admin .topbar-inner .profile-access #current-user{font-size:12px;font-weight:650;line-height:1.3;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .admin .topbar-inner #current-user-role{font-size:10px;font-weight:400;color:#7a8f96;line-height:1.3}
-.admin .topbar-inner #logout{display:inline-flex;align-items:center;gap:6px;padding:9px 10px;border-color:transparent;background:transparent;font-size:11px;white-space:nowrap}
-.admin .topbar-inner #logout:hover{background:#f0f5f5}
+.admin .topbar-inner #logout{display:inline-flex;align-items:center;gap:6px;font-size:11px;white-space:nowrap}
+
 .admin .app-topbar nav{justify-content:flex-start;gap:5px;max-width:1440px;margin:0 auto;padding:12px 36px;border-top:1px solid #edf1f2}
 .admin .app-topbar nav button,.admin .app-topbar nav a{padding:10px 13px;margin:0;font-size:12px;border-radius:7px}
 .admin .app-topbar nav #sidebar-tv{margin-left:auto;color:#008679}
 html[data-theme="dark"] .app-topbar .brand .brand-symbol{background:#205048;color:#8bf0dc}
-html[data-theme="dark"] .version-box,html[data-theme="dark"] .admin .topbar-inner .profile-access{border-color:#304650}
+html[data-theme="dark"] .version-box{border-color:#304650}
 html[data-theme="dark"] .version-box strong{color:#c2d6dd}html[data-theme="dark"] .version-box{color:#9fb5bc}
 html[data-theme="dark"] .version-box.has-update span{color:#f1cf86}html[data-theme="dark"] .version-box.has-update span::before{background:#e1b659}
 html[data-theme="dark"] .admin .app-topbar nav{border-color:#2b3d46}
-html[data-theme="dark"] .admin .topbar-inner #logout{background:transparent;color:#b6cbd3}html[data-theme="dark"] .admin .topbar-inner #logout:hover{background:#243941}
+
 @media(max-width:1200px){.admin .topbar-inner{gap:18px}.admin .topbar-inner .theme-picker button span{display:none}.admin .topbar-inner .theme-picker button{padding:8px}.admin .app-topbar nav{gap:3px}.admin .app-topbar nav button,.admin .app-topbar nav a{padding:10px;font-size:11px}}
-@media(max-width:900px){.admin .topbar-inner{padding:20px 24px;gap:16px}.admin .topbar-inner .account{gap:10px}.product-meta{padding-left:0;gap:6px 10px}.admin .topbar-inner .profile-access{padding-left:12px;max-width:170px}.admin .topbar-inner .profile-access #current-user{max-width:120px}.admin .app-topbar nav{padding:10px 24px}.admin .app-topbar nav #sidebar-tv{margin-left:0}}
+@media(max-width:900px){.admin .topbar-inner{padding:20px 24px;gap:16px}.admin .topbar-inner .account{gap:10px}.product-meta{padding-left:0;gap:6px 10px}.admin .topbar-inner .profile-access{max-width:170px}.admin .topbar-inner .profile-access #current-user{max-width:120px}.admin .app-topbar nav{padding:10px 24px}.admin .app-topbar nav #sidebar-tv{margin-left:0}}
 @media(max-width:800px){.admin .topbar-inner{flex-direction:column;align-items:stretch;gap:16px;padding:18px 16px 14px}.product-identity{gap:8px}.admin .topbar-inner .account{width:100%;justify-content:flex-start;border-top:1px solid #edf1f2;padding-top:12px;gap:12px}.admin .topbar-inner .profile-access{flex:1;max-width:none}.admin .topbar-inner .profile-access #current-user{max-width:none;font-size:12px}.admin .topbar-inner .profile-copy{max-width:none}.admin .topbar-inner #current-user-role{font-size:10px;max-width:none}.admin .topbar-inner .theme-picker{flex-basis:auto}.admin .app-topbar nav{padding:8px 12px;gap:4px}.admin .app-topbar nav button,.admin .app-topbar nav a{font-size:11px;padding:9px 10px;gap:6px}.admin .app-topbar nav #sidebar-tv{margin-left:0}html[data-theme="dark"] .admin .topbar-inner .account{border-color:#2b3d46}}
-@media(max-width:380px){.admin .topbar-inner .account{gap:7px}.admin .topbar-inner .profile-access{padding-left:8px;gap:6px}.admin .topbar-inner .profile-access>.icon{display:none}.admin .topbar-inner #logout{padding:8px 4px}}
+@media(max-width:380px){.admin .topbar-inner .account{gap:7px}.admin .topbar-inner .profile-access{gap:6px}.admin .topbar-inner .profile-access>.icon{display:none}}
+
+/* Mesma linguagem dos botões secundários: borda, raio e altura compartilhados. */
+.admin .topbar-inner .account{--control-bg:#fff;--control-border:#dce5e7;--control-text:#40555c;--control-hover:#f0f5f5;--control-selected:#e6f6f1;--control-selected-border:#c9e9df;--control-selected-text:#007f74;gap:10px}
+html[data-theme="dark"] .admin .topbar-inner .account{--control-bg:#19272f;--control-border:#304650;--control-text:#b6cbd3;--control-hover:#243941;--control-selected:#205048;--control-selected-border:#30685e;--control-selected-text:#8bf0dc}
+.admin .topbar-inner .account .theme-picker,.admin .topbar-inner .account .profile-access,.admin .topbar-inner .account #logout{height:44px;min-height:44px;margin:0;border:1px solid var(--control-border);border-radius:7px;background:var(--control-bg);color:var(--control-text);box-shadow:none;filter:none}
+.admin .topbar-inner .account .theme-picker{padding:3px;gap:2px}
+.admin .topbar-inner .account .theme-picker button{height:36px;min-height:36px;margin:0;padding:8px 10px;border:1px solid transparent;border-radius:4px;background:transparent;color:var(--control-text);box-shadow:none;filter:none}
+.admin .topbar-inner .account .theme-picker button:hover,.admin .topbar-inner .account .profile-access:hover,.admin .topbar-inner .account #logout:hover{background:var(--control-hover);color:var(--control-text);filter:none}
+.admin .topbar-inner .account .theme-picker button[aria-pressed="true"]{background:var(--control-selected);border-color:var(--control-selected-border);color:var(--control-selected-text);box-shadow:none}
+.admin .topbar-inner .account .profile-access{padding:6px 12px}
+.admin .topbar-inner .account .icon{width:18px;height:18px}
+.admin .topbar-inner .account .profile-access:hover{border-color:var(--control-border)}
+.admin .topbar-inner .account #logout{padding:10px 12px}
+.admin .topbar-inner .account button:focus-visible{outline:2px solid #009e93;outline-offset:3px}
+@media(max-width:1200px){.admin .topbar-inner .account .theme-picker button{padding:8px}}
+@media(max-width:380px){.admin .topbar-inner .account{gap:6px}.admin .topbar-inner .account .profile-access,.admin .topbar-inner .account #logout{padding-left:8px;padding-right:8px}}
