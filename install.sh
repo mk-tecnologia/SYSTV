@@ -34,7 +34,7 @@ trap 'rm -rf -- "$WORK"' EXIT
 CURL_CONFIG=$WORK/curl.conf
 printf 'fail\nsilent\nshow-error\nlocation\nretry = 3\nconnect-timeout = 20\nproto = "=https"\nproto-redir = "=https"\n' > "$CURL_CONFIG"
 if [[ -n ${GITHUB_TOKEN:-} ]]; then
-  [[ $GITHUB_TOKEN =~ ^[a-zA-Z0-9_]+$ ]] || { echo 'Formato de GITHUB_TOKEN inválido.' >&2; exit 1; }
+  [[ $GITHUB_TOKEN =~ ^[a-zA-Z0-9_.+/=-]+$ ]] || { echo 'Formato de GITHUB_TOKEN inválido.' >&2; exit 1; }
   printf 'header = "Authorization: Bearer %s"\n' "$GITHUB_TOKEN" >> "$CURL_CONFIG"
 fi
 API=https://api.github.com/repos/$REPOSITORY

@@ -1,5 +1,9 @@
 # Histórico
 
+## 2.1.2
+
+- Aceita tokens de leitura do GitHub Actions no download privado.
+
 ## 2.1.1
 
 - Corrige a seleção de versão no bootstrap após identificar o sistema operacional.

@@ -64,7 +64,7 @@ Cadastre a empresa e os produtos; o link da primeira TV é `/tv?screen=tv01`.
 ```bash
 systvctl backup
 systvctl update                     # última release estável
-systvctl update --version v2.1.1    # versão específica
+systvctl update --version v2.1.2    # versão específica
 systvctl rollback                  # código anterior, sem reverter o banco
 journalctl -u systv -f
 ```
