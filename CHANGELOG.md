@@ -1,5 +1,13 @@
 # Histórico
 
+## 2.3.0
+
+- Primeiro administrador criado pelo usuário no navegador com link de uso único.
+- Links de 256 bits, validade de 24 horas, renovação local e somente hash no banco.
+- Senha administrativa padrão/gerada removida das novas instalações de produção.
+- Entrega no terminal sem registrar o token em logs de provisionamento.
+- Migração preserva contas e sessões existentes e bloqueia reabertura da ativação.
+
 ## 2.2.1
 
 - Redireciona o nome curto HTTP ao endereço canônico, preservando caminho e parâmetros.

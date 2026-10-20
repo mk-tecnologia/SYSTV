@@ -83,6 +83,7 @@ case "$(dpkg --print-architecture)" in
 esac
 install -d -m 0750 /var/log/systv
 LOG_FILE=/var/log/systv/deploy-$(date -u +%Y%m%dT%H%M%SZ)-$$.log
+exec 3>&1
 exec > >(tee -a "$LOG_FILE") 2>&1
 WORK=$(mktemp -d)
 OLD_RELEASE=''
@@ -123,7 +124,6 @@ if [[ $MODE == install ]]; then
   useradd --system --user-group --home-dir /nonexistent --no-create-home --shell /usr/sbin/nologin systv
   install -d -m 0750 -o root -g systv /etc/systv
   DB_PASSWORD=$(openssl rand -hex 32)
-  ADMIN_PASSWORD=$(openssl rand -hex 16)
   MAIL_KEY=$(openssl rand -hex 32)
   COOKIE_SECURE=false
   [[ $SCHEME != https ]] || COOKIE_SECURE=true
@@ -133,8 +133,6 @@ HOST=127.0.0.1
 PORT=3000
 PUBLIC_ORIGIN=$ORIGIN
 COOKIE_SECURE=$COOKIE_SECURE
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=$ADMIN_PASSWORD
 DB_HOST=127.0.0.1
 DB_PORT=3306
 DB_NAME=systv
@@ -150,12 +148,12 @@ CREATE DATABASE systv CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE USER 'systv'@'127.0.0.1' IDENTIFIED BY '$DB_PASSWORD';
 GRANT ALL PRIVILEGES ON systv.* TO 'systv'@'127.0.0.1';
 SQL
-  # Credenciais disponíveis mesmo se TLS falhar; nunca são escritas no log.
+  # O responsável recebe o link após o provisionamento; não existe senha padrão.
   cat > /etc/systv/acesso-inicial.txt <<ACCESS
 URL: $ORIGIN
-Usuário: admin
-Senha inicial: $ADMIN_PASSWORD
-Troque a senha na administração; este arquivo não acompanha trocas posteriores.
+Primeiro acesso por link de ativação, com validade de 24 horas.
+O responsável define o próprio usuário e senha no navegador.
+Para emitir outro link antes da ativação: systvctl activation-link.
 ACCESS
   chmod 0600 /etc/systv/acesso-inicial.txt
 else
@@ -219,4 +217,15 @@ curl --fail --silent --show-error http://127.0.0.1:3000/api/health > /dev/null
 if [[ -n $OLD_RELEASE ]]; then
   printf '%s\n' "$OLD_RELEASE" > /etc/systv/previous-release
 fi
-printf '\nSYSTV %s pronto.\nCredenciais: cat /etc/systv/acesso-inicial.txt\nDiagnóstico: systvctl doctor\nLog: %s\n' "$VERSION" "$LOG_FILE"
+if [[ $MODE == install ]]; then
+  (cd "$RELEASE"; /opt/systv/node/bin/node --env-file=/etc/systv/systv.env scripts/activation-link.js > /dev/null)
+fi
+printf '\nSYSTV %s pronto.\nDiagnóstico: systvctl doctor\nLog: %s\n' "$VERSION" "$LOG_FILE"
+if [[ $MODE == install ]]; then
+  if [[ -t 3 ]]; then
+    printf '\nEncaminhe este link ao responsável pela loja (uso único, válido por 24 horas):\n' >&3
+    cat /etc/systv/activation-link.txt >&3
+  else
+    echo 'Link de ativação salvo em /etc/systv/activation-link.txt (somente root); emita outro com systvctl activation-link.'
+  fi
+fi

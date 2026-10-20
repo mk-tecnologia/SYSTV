@@ -1,3 +1,4 @@
+import { createActivation, sealActivation } from './activation.js';
 import { createMailer } from './mail.js';
 import http from 'node:http';
 import { createPresence } from './presence.js';
@@ -10,6 +11,7 @@ import { bootstrapAdmin, createUsers, requireAdmin } from './users.js';
 import { createLogos, readLogo, validSide } from './logos.js';
 
 const files = {
+  '/activate': 'activate.html', '/activate.js': 'activate.js',
   '/': 'admin.html', '/admin': 'admin.html', '/tv': 'tv.html',
   '/security.js': 'security.js', '/tv-palettes.js': 'tv-palettes.js', '/theme.js': 'theme.js', '/icons.svg': 'icons.svg', '/style.css': 'style.css', '/admin.js': 'admin.js', '/tv.js': 'tv.js',
   '/tv-connection.js': 'tv-connection.js',
@@ -17,6 +19,8 @@ const files = {
 
 export async function createApp(db, config, dependencies = {}) {
   await bootstrapAdmin(db, config);
+  await sealActivation(db);
+  const activation = createActivation(db);
   const repository = createRepository(db);
   const mailer = createMailer(db, config, dependencies.mail);
   const auth = createAuth(db, config, mailer);
@@ -44,6 +48,9 @@ export async function createApp(db, config, dependencies = {}) {
           await db.query('SELECT 1');
           return json(res, 200, { status: 'ok', database: 'mariadb' });
         }
+        if (route === '/api/activation/status' && method === 'GET') return json(res, 200, await activation.status());
+        if (route === '/api/activation/validate' && method === 'POST') return json(res, 200, await activation.validate(await readBody(req)));
+        if (route === '/api/activation' && method === 'POST') return json(res, 200, await activation.complete(await readBody(req)));
         if (route === '/api/events' && method === 'GET') return events.subscribe(req, res);
         if (route === '/api/state' && method === 'GET') return json(res, 200, await repository.snapshot());
         if (/^\/api\/logos\/(left|right)$/.test(route) && method === 'GET') {
@@ -111,7 +118,8 @@ export async function createApp(db, config, dependencies = {}) {
       if (!files[route] || method !== 'GET') throw new HttpError(404, 'Página não encontrada.');
       const data = await readFile(new URL(`../public/${files[route]}`, import.meta.url));
       const type = route.endsWith('.svg') ? 'image/svg+xml' : route.endsWith('.css') ? 'text/css' : route.endsWith('.js') ? 'text/javascript' : 'text/html';
-      res.writeHead(200, { 'Content-Type': `${type}; charset=utf-8`, 'Cache-Control': 'no-cache' });
+      if (route === '/activate') res.setHeader('Referrer-Policy', 'no-referrer');
+      res.writeHead(200, { 'Content-Type': `${type}; charset=utf-8`, 'Cache-Control': route === '/activate' ? 'no-store' : 'no-cache' });
       res.end(data);
     } catch (error) {
       if (res.headersSent) return res.destroy();

@@ -113,7 +113,7 @@ bash /tmp/systv-install.sh --configure-web --tls self-signed
 
 A URL existente é lida de `/etc/systv/systv.env`. O comando não depende de já
 haver `systvctl web` instalado, funciona sobre a versão anterior e preserva
-senha administrativa, senha do banco, chave SMTP, usuários e dados. Se preferir
+senha administrativa existente, senha do banco, chave SMTP, usuários e dados. Se preferir
 HTTP, especifique explicitamente a nova URL e `--tls none`.
 
 A configuração anterior é guardada em `/var/backups/systv/web-*.tar.gz`, com
@@ -133,7 +133,8 @@ systvctl doctor
 /opt/systv/current -> releases/  versão ativa
 /opt/systv/releases/             versões do código e dependências
 /etc/systv/systv.env             configuração e segredos persistentes
-/etc/systv/acesso-inicial.txt    credenciais iniciais, somente root
+/etc/systv/activation-link.txt   link inicial, somente root
+/etc/systv/acesso-inicial.txt    instruções de primeiro acesso
 /etc/systv/tls/                  certificado e chave privada
 /etc/systv/web-mode              modo de acesso configurado
 /var/backups/systv/              backups locais protegidos
@@ -142,24 +143,24 @@ systvctl doctor
 
 O serviço roda como `systv`, sem shell, com código de root e somente leitura
 para o processo. Usa `NODE_ENV=production` e escuta em `127.0.0.1:3000`, atrás
-do Nginx, com buffering desativado para SSE. Banco, administrador e chave de
-criptografia SMTP têm segredos gerados individualmente. O catálogo começa
+do Nginx, com buffering desativado para SSE. A senha do banco e a chave de
+criptografia SMTP são geradas individualmente. O primeiro administrador define
+a própria senha pela ativação no navegador. O catálogo começa
 vazio, com uma TV. Produção não importa SQLite nem o banco de desenvolvimento.
 
 O instalador não altera DNS ou firewall. Preserve a porta SSH. Permita acesso
 web somente pela rede desejada; 3000 e 3306 não precisam ficar acessíveis às TVs.
 
 ```bash
-cat /etc/systv/acesso-inicial.txt
 systvctl doctor
 systvctl version
 journalctl -u systv -f
 systemctl status systv nginx mariadb systv-backup.timer
 ```
 
-Troque a senha inicial e configure empresa/produtos pelo painel. Configure SMTP
-para recuperação de senha e 2FA. Alterar `ADMIN_PASSWORD` não redefine contas
-existentes; preserve `MAIL_ENCRYPTION_KEY` para ler as credenciais SMTP.
+Receba o link mostrado ao instalador, abra no navegador e defina o seu acesso.
+Depois configure empresa/produtos pelo painel. Configure SMTP
+para recuperação de senha e 2FA. `ADMIN_PASSWORD` não cria nem redefine contas em produção; preserve `MAIL_ENCRYPTION_KEY` para ler as credenciais SMTP.
 Reinicie o serviço após editar o ambiente.
 
 ## Atualização e rollback
@@ -246,3 +247,45 @@ no certificado. Não é necessário remover o site padrão global do Nginx.
 Para aplicar o ajuste a uma instalação existente com certificado local, baixe
 o instalador atual e execute `--configure-web --tls self-signed`. Um certificado
 local válido para o mesmo nome é preservado. Banco e credenciais não são alterados.
+
+## Ativação do primeiro administrador (2.3.0)
+
+Instalações novas não têm senha administrativa gerada ou padrão. Ao terminar,
+o instalador exibe no terminal um link exclusivo com validade de 24 horas.
+Encaminhe-o ao responsável pela loja por um canal privado. No navegador ele
+escolhe nome, usuário, e-mail opcional e senha, confirma e depois entra no painel.
+Não é preciso que o responsável tenha acesso ao servidor.
+
+Apenas um link fica válido por instalação. Para renovar antes da ativação:
+
+```bash
+systvctl activation-link
+```
+
+Esse comando local, executado por root, invalida imediatamente o link anterior,
+salva o novo link em `/etc/systv/activation-link.txt` (0600) e o mostra na saída.
+Não execute com saída encaminhada a logs públicos. A instalação automática sem
+terminal não imprime o link; guarde e entregue o arquivo privado por um canal
+adequado. Senha, token e link não aparecem no log de provisionamento.
+
+O banco armazena somente SHA-256 do token aleatório de 256 bits e seu prazo.
+A criação do administrador e o consumo do link ocorrem em uma transação, sob o
+mesmo bloqueio das alterações de usuários. Requisições simultâneas não criam
+administradores adicionais. Abrir/verificar o link não o consome; somente salvar
+os dados conclui a ativação. O navegador remove o token da barra de endereço,
+não o grava em armazenamento local e envia-o apenas no corpo da requisição.
+
+Depois de concluído, a ativação fica fechada, inclusive se alguém remover as
+contas manualmente no banco. Não há emissão pública de links. O e-mail informado
+na ativação ainda depende da configuração SMTP para recuperação/2FA; ativar a
+conta não envia mensagens nem habilita 2FA automaticamente.
+
+Atualizações de servidores 2.2.x ou anteriores preservam usuários, senhas,
+permissões e sessões. Se já existir qualquer conta, a migração fecha a ativação
+e o comando de emissão recusa criar um link. Use o login/recuperação existente.
+O parâmetro de senha administrativa por ambiente permanece apenas para o fluxo
+de desenvolvimento, não para provisionar produção.
+
+Se a URL for alterada antes de entregar o link, `systvctl web` atualiza a origem
+do arquivo privado. Um link já encaminhado pode apontar para o endereço antigo;
+emita e entregue outro para invalidá-lo e usar a nova origem.

@@ -146,6 +146,13 @@ if access.exists():
     text = '\n'.join('URL: ' + sys.argv[1] if line.startswith('URL: ') else line for line in access.read_text().splitlines())
     access.write_text(text + '\n')
     access.chmod(0o600)
+activation = path.parent / 'activation-link.txt'
+if activation.exists():
+    from urllib.parse import urlsplit
+    fragment = urlsplit(activation.read_text().strip()).fragment
+    if fragment:
+        activation.write_text(sys.argv[1] + '/activate#' + fragment + '\n')
+        activation.chmod(0o600)
 PY
 PROXY=$(cat <<'NGINX'
     client_max_body_size 8m;

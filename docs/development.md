@@ -148,7 +148,7 @@ npm run db:seed
 npm start
 ```
 
-Em produção, configure `NODE_ENV=production`, `PUBLIC_ORIGIN=https://seu-dominio` e `COOKIE_SECURE=true`, além de uma senha forte. Use HTTPS no proxy reverso e mantenha a aplicação sob um gerenciador de processos. O servidor exige `ADMIN_PASSWORD` para criar o primeiro administrador em produção; depois disso, as contas existentes são autenticadas pelo banco. Os dados de acesso padrão do DDEV são exclusivos do desenvolvimento.
+Em produção, configure `NODE_ENV=production`, `PUBLIC_ORIGIN=https://seu-dominio` e `COOKIE_SECURE=true`, além de uma senha forte. Use HTTPS no proxy reverso e mantenha a aplicação sob um gerenciador de processos. Em produção, o primeiro administrador é criado pelo link de ativação descrito no guia de instalação; contas existentes continuam autenticadas pelo banco. `ADMIN_PASSWORD` é usado somente no ambiente de desenvolvimento. Os dados de acesso padrão do DDEV são exclusivos do desenvolvimento.
 
 No Nginx, desative buffering para os eventos e mantenha o restante das rotas apontando para o Node.js:
 

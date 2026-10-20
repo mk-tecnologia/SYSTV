@@ -17,9 +17,21 @@ const state = await (await fetch(process.env.PUBLIC_ORIGIN + '/api/state')).json
 assert.equal(state.products.length, 0);
 assert.equal(state.screens.length, 1);
 assert.equal(state.settings.name, 'Minha empresa');
+// O token existe apenas no arquivo privado, nunca no ambiente ou nos logs.
+const {readFile} = await import('node:fs/promises');
+assert.equal(process.env.ADMIN_PASSWORD, undefined);
+assert.equal((await (await fetch(process.env.PUBLIC_ORIGIN + '/api/activation/status')).json()).required, true);
+const activationLink = new URL((await readFile('/etc/systv/activation-link.txt', 'utf8')).trim());
+const token = new URLSearchParams(activationLink.hash.slice(1)).get('token');
+const activate = await fetch(process.env.PUBLIC_ORIGIN + '/api/activation', {
+  method: 'POST', headers: {'Content-Type': 'application/json', Origin: process.env.PUBLIC_ORIGIN},
+  body: JSON.stringify({token, name: 'Responsável da loja', username: 'responsavel', password: 'only-test-activation-password'}),
+});
+assert.equal(activate.status, 200);
+assert.equal((await (await fetch(process.env.PUBLIC_ORIGIN + '/api/activation/status')).json()).required, false);
 const login = await fetch(process.env.PUBLIC_ORIGIN + '/api/login', {
   method: 'POST', headers: {'Content-Type': 'application/json', Origin: process.env.PUBLIC_ORIGIN},
-  body: JSON.stringify({username: 'admin', password: process.env.ADMIN_PASSWORD}),
+  body: JSON.stringify({username: 'responsavel', password: 'only-test-activation-password'}),
 });
 assert.equal(login.status, 200);
 assert.match(login.headers.get('set-cookie'), /HttpOnly/);
@@ -27,6 +39,17 @@ if (process.env.COOKIE_SECURE === 'true') assert.match(login.headers.get('set-co
 assert.equal(process.env.NODE_ENV, 'production');
 assert.equal(process.env.HOST, '127.0.0.1');
 JS
+[[ $(stat -c %a /etc/systv/activation-link.txt) == 600 ]]
+runuser -u systv -- test ! -r /etc/systv/activation-link.txt
+# O link nem sua chave aparecem no log de provisionamento.
+/opt/systv/node/bin/node --input-type=module <<'JS'
+import {readFile, readdir} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+const link = new URL((await readFile('/etc/systv/activation-link.txt', 'utf8')).trim());
+const token = new URLSearchParams(link.hash.slice(1)).get('token');
+for (const name of await readdir('/var/log/systv')) assert.ok(!(await readFile('/var/log/systv/' + name, 'utf8')).includes(token));
+JS
+if systvctl activation-link > /dev/null 2>&1; then echo 'Emissão após ativação foi aceita.' >&2; exit 1; fi
 runuser -u systv -- test ! -w /opt/systv/current/server.js
 runuser -u systv -- test ! -w /etc/systv/systv.env
 ENV_HASH=$(sha256sum /etc/systv/systv.env)

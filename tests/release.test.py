@@ -20,7 +20,8 @@ class ProductionRelease(unittest.TestCase):
         with tarfile.open(archive_path) as archive:
             paths = set(archive.getnames())
             self.assertTrue({'VERSION', 'install.sh', 'server.js', 'scripts/setup-production.js',
-                             'deploy/debian/systv.service', 'deploy/debian/systvctl'} <= paths)
+                             'deploy/debian/systv.service', 'deploy/debian/systvctl', 'public/activate.html',
+                             'public/activate.js', 'scripts/activation-link.js', 'database/migrations/009_initial_activation.sql'} <= paths)
             for name in paths:
                 parts = pathlib.PurePosixPath(name).parts
                 self.assertFalse({'.ddev', '.git', '.idea', 'data', 'backups', 'node_modules', 'tests'} & set(parts), name)

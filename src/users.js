@@ -24,7 +24,8 @@ export async function requireScreen(connection, user, screen) {
 export async function bootstrapAdmin(db, config) {
   const [{ count }] = await db.query('SELECT COUNT(*) AS count FROM users');
   if (count > 0) return;
-  if (config.production && !config.password) throw new Error('ADMIN_PASSWORD é obrigatório para criar o primeiro administrador.');
+  // Produção só cria o primeiro administrador pela ativação de uso único.
+  if (config.production) return;
   const password = config.password || randomBytes(16).toString('base64url');
   if (!config.password) console.log(`Senha inicial do administrador: ${password}`);
   const username = config.adminUsername || 'admin';

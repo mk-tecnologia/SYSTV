@@ -42,6 +42,7 @@
       <form id="login-code-form" hidden><p id="login-code-description"></p><label>Código recebido por e-mail<input name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" required placeholder="000000"></label><button>Confirmar e entrar</button><button type="button" id="login-code-back" class="login-link">Voltar ao login</button></form>
       <form id="forgot-form" hidden><p>Enviaremos um link para o e-mail cadastrado na sua conta.</p><label>E-mail<input name="email" type="email" autocomplete="email" maxlength="254" required></label><button>Enviar link de recuperação</button><button type="button" id="forgot-back" class="login-link">Voltar ao login</button></form>
       <form id="reset-form" hidden><p>Escolha uma nova senha para sua conta. O link vale por 10 minutos.</p><label>Nova senha<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label><label>Confirme a senha<input name="confirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label><button>Salvar nova senha</button><button type="button" id="reset-back" class="login-link">Voltar ao login</button></form>
+      <p id="initial-access-help" class="login-help" hidden>Primeiro acesso? Abra o link de ativação enviado pelo responsável pela instalação.</p>
       <p class="login-help">Precisa de acesso? Fale com o administrador da sua empresa.</p>
     </section>
     <div id="workspace" hidden>

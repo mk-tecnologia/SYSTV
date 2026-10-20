@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>SYSTV · Primeiro acesso</title>
+  <script src="/theme.js"></script>
+  <link rel="stylesheet" href="/style.css">
+  <script type="module" src="/activate.js"></script>
+</head>
+<body class="admin login-view">
+  <main>
+    <section class="card login" aria-labelledby="activation-title">
+      <div class="login-brand"><span class="login-brand-mark"><svg class="icon" aria-hidden="true"><use href="/icons.svg#monitor"/></svg></span><b>SYS<span>TV</span></b></div>
+      <span class="login-eyebrow">PRIMEIRO ACESSO</span>
+      <h2 id="activation-title">Seu painel começa aqui</h2>
+      <p class="login-intro" id="activation-intro">Verificando seu link de ativação…</p>
+      <p id="activation-message" role="status" aria-live="polite"></p>
+      <form id="activation-form" hidden>
+        <label>Seu nome<input name="name" autocomplete="name" maxlength="120" required></label>
+        <label>Usuário<input name="username" autocomplete="username" autocapitalize="none" spellcheck="false" minlength="3" maxlength="64" pattern="[a-zA-Z0-9._-]{3,64}" required placeholder="Ex.: maria.silva"><small>De 3 a 64 caracteres, sem espaços ou acentos.</small></label>
+        <label>E-mail (opcional)<input name="email" type="email" autocomplete="email" maxlength="254"><small>Para recuperar o acesso quando o envio de e-mails estiver configurado.</small></label>
+        <label>Crie sua senha<input name="password" type="password" autocomplete="new-password" minlength="8" maxlength="128" required><small>Use pelo menos 8 caracteres.</small></label>
+        <label>Confirme sua senha<input name="confirm" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
+        <button type="submit">Criar meu acesso</button>
+      </form>
+      <a id="activation-login" class="button" href="/admin" hidden>Ir para o login</a>
+      <p class="login-help" id="activation-help">Este link é exclusivo para criar o primeiro administrador. Ele pode ser usado uma única vez.</p>
+      <noscript>Ative o JavaScript do navegador para concluir seu primeiro acesso.</noscript>
+    </section>
+  </main>
+</body>
+</html>

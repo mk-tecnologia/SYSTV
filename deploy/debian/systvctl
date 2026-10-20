@@ -49,6 +49,11 @@ case "$COMMAND" in
     if [[ ${1:-} == --scheduled ]]; then
       find /var/backups/systv -mindepth 1 -maxdepth 1 -type d -name '20*T*Z-*' -mtime +14 -exec rm -rf -- {} +
     fi ;;
+  activation-link)
+    exec 9>/run/lock/systv-deploy.lock
+    flock -n 9 || fail 'Outra manutenção está em andamento.'
+    cd /opt/systv/current
+    exec /opt/systv/node/bin/node --env-file=/etc/systv/systv.env scripts/activation-link.js ;;
   web)
     exec bash /opt/systv/current/deploy/debian/configure-web.sh "$@" ;;
   update)
@@ -93,6 +98,6 @@ case "$COMMAND" in
     printf '%s\n' "$OLD" > /etc/systv/previous-release
     echo 'Código revertido. Migrações do banco não foram desfeitas.' ;;
   help|--help|-h)
-    echo 'Uso: systvctl {version|doctor|backup|web [opções]|update [--version vX.Y.Z]|rollback [release]}' ;;
+    echo 'Uso: systvctl {version|doctor|backup|activation-link|web [opções]|update [--version vX.Y.Z]|rollback [release]}' ;;
   *) fail "Comando desconhecido: $COMMAND" ;;
 esac

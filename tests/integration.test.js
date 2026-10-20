@@ -58,7 +58,7 @@ test('API com MariaDB real, múltiplas TVs e sessões persistentes', { timeout: 
     await admin.query(`CREATE DATABASE ${admin.escapeId(name)} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
     db = createDatabase({ ...config.database, database: name, user: process.env.TEST_DB_USER || 'root', password: process.env.TEST_DB_PASSWORD || 'root' });
     await migrate(db); await migrate(db);
-    assert.equal((await db.query('SELECT * FROM schema_migrations')).length, 8);
+    assert.equal((await db.query('SELECT * FROM schema_migrations')).length, 9);
     assert.equal(await seed(db), true); assert.equal(await seed(db), false);
     await db.close(); db = undefined;
     await start();

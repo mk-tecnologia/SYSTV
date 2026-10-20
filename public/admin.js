@@ -64,6 +64,9 @@ function setUser(user) {
   screenPresence.clear();
   if (user) refreshPresence();
   $('login').hidden = Boolean(user);
+  if (!user) api('activation/status').then(status => {
+    $('initial-access-help').hidden = !status.required;
+  }).catch(() => {});
   $('workspace').hidden = !user;
   $('navigation').hidden = !user;
   $('logout').hidden = !user;

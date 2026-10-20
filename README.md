@@ -28,9 +28,9 @@ computadores e TVs e configure a confiança nesses dispositivos; caso contrário
 o navegador mostrará um alerta. Se a empresa tem uma CA, prefira um certificado
 dela. Veja as opções de certificado abaixo.
 
-A instalação configura Node.js 24, MariaDB, Nginx, serviço systemd, senhas
-aleatórias, backups diários e releases com atualização/rollback. O catálogo
-começa vazio, com uma TV.
+A instalação configura Node.js 24, MariaDB, Nginx, serviço systemd, ativação do
+primeiro administrador por link, backups diários e releases com atualização/rollback.
+O catálogo começa vazio, com uma TV.
 
 ## Corrigir uma instalação interrompida no Certbot
 
@@ -68,24 +68,53 @@ systvctl web --origin http://tv.empresa.intranet --tls none
 
 O instalador não abre portas no firewall nem configura o DNS da rede.
 
-## Primeiro acesso e operação
+## Primeiro acesso por link
+
+No final da instalação em um terminal, o instalador mostra um link exclusivo.
+Quem instala encaminha esse link ao responsável pela loja, que abre no navegador
+e escolhe **nome, usuário e senha**. O usuário não precisa entrar no servidor,
+consultar arquivos ou receber uma senha padrão.
+
+- O link vale por **24 horas**, sobrevive ao reinício e só pode ser usado uma vez.
+- A senha é definida pelo próprio responsável e armazenada com hash scrypt.
+- Depois da ativação, o primeiro acesso é encerrado definitivamente.
+- Instalações que já possuem contas mantêm seus usuários, senhas e sessões.
+- O token fica no fragmento do link (`#token=...`), não na URL enviada ao Nginx.
+
+Se o link expirar ou precisar ser substituído antes da ativação, o instalador
+pode emitir outro no servidor:
 
 ```bash
-cat /etc/systv/acesso-inicial.txt
-systvctl doctor
-systvctl version
+systvctl activation-link
 ```
 
-Entre com as credenciais geradas e troque a senha. Cadastre empresa e produtos;
-o link da primeira TV é `/tv?screen=tv01`.
+Isso invalida o link anterior. Não há emissão de links pela tela pública.
+O responsável recebe apenas o link: não precisa de acesso ao terminal.
+O link deve ser encaminhado por um canal privado para a pessoa que assumirá a
+administração; quem tiver o link válido poderá criar o primeiro administrador.
+
+Em execução sem terminal interativo, o instalador salva o link em
+`/etc/systv/activation-link.txt`, legível somente por root, e não o imprime em
+logs de automação. Um operador autorizado pode consultar esse arquivo ou emitir
+outro link para entregar ao usuário.
+
+## Operação
+
+Depois de ativar, entre no painel com o usuário e a senha escolhidos. Cadastre
+empresa e produtos; o link da primeira TV é `/tv?screen=tv01`.
 
 ```bash
+systvctl doctor
+systvctl version
 systvctl backup
 systvctl update
-systvctl update --version v2.2.0
 systvctl rollback
 journalctl -u systv -f
 ```
+
+Em servidor já instalado, `systvctl update` preserva as contas e não reabre a
+ativação. Para esquecimento de senha, use a recuperação por e-mail configurado.
+O link inicial não serve para substituir um administrador existente.
 
 [Guia de produção, certificados, backup e recuperação](docs/debian-13.md).
 [Revisão da exposição pública de segredos](docs/security-review.md).
