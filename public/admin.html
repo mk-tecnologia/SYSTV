@@ -134,7 +134,7 @@
     <label>Nome<input name="name" maxlength="120" autocomplete="off" required></label>
     <label>Login<input name="username" minlength="3" maxlength="64" pattern="[a-zA-Z0-9._-]{3,64}" autocomplete="off" required><small>Use letras sem acentos, números, ponto, hífen ou sublinhado.</small></label>
     <label>E-mail<input name="email" type="email" maxlength="254" autocomplete="email"><small>Necessário para recuperação de senha e 2FA. Usuários existentes podem continuar sem e-mail.</small></label>
-    <label id="user-current-password" hidden>Senha atual<input name="current_password" type="password" maxlength="128" autocomplete="current-password"><small>Confirme sua senha para salvar as alterações no seu usuário.</small></label>
+    <label id="user-current-password" hidden>Senha atual<input name="current_password" type="password" maxlength="128" autocomplete="current-password"><small>Necessária somente para trocar sua senha ou ativar/desativar o 2FA. Para alterar nome ou e-mail, deixe em branco.</small></label>
     <label>Senha<input name="password" type="password" minlength="8" maxlength="128" autocomplete="new-password"><small id="password-help">Mínimo de 8 caracteres.</small></label>
     <div class="form-row"><label>Perfil<select name="role"><button type="button"><selectedcontent></selectedcontent></button><option value="editor">Operador</option><option value="admin">Administrador</option></select></label><label class="check"><input name="active" type="checkbox" checked> Usuário ativo</label></div>
     <fieldset id="permissions-field"><legend>TVs que este usuário pode alterar</legend><div id="user-screen-options"></div><p>Sem seleção, o operador não poderá alterar nenhuma TV.</p></fieldset>

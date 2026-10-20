@@ -139,11 +139,15 @@ export function createAuth(db, config, mailer) {
     },
     async updateProfile(req, actor, input) {
       limit(req, 'profile', 10);
-      const user = await passwordUser(actor.id, input.current_password);
+      const changePassword = input.password !== undefined && input.password !== '';
+      if (changePassword && !validPassword(input.password)) throw new HttpError(400, 'A nova senha deve ter entre 8 e 128 caracteres.');
+      const user = changePassword
+        ? await passwordUser(actor.id, input.current_password)
+        : (await db.query('SELECT * FROM users WHERE id=? AND active=1', [actor.id]))[0];
+      if (!user) throw new HttpError(401, 'Entre novamente.');
       const email = typeof input.email === 'string' ? input.email.trim().toLowerCase() || null : null;
       if (!validText(input.name) || email !== null && !validEmail(email)) throw new HttpError(400, 'Confira o nome e o e-mail.');
-      if (input.password && !validPassword(input.password)) throw new HttpError(400, 'A nova senha deve ter entre 8 e 128 caracteres.');
-      const hashed = input.password ? await hashPassword(input.password) : null;
+      const hashed = changePassword ? await hashPassword(input.password) : null;
       await db.transaction(async c => {
         const [[current]] = await c.execute('SELECT * FROM users WHERE id=? FOR UPDATE', [user.id]);
         if (!current?.active || current.password_hash !== user.password_hash) throw new HttpError(401, 'Entre novamente.');

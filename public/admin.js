@@ -277,7 +277,7 @@ async function openUser(user) {
   form.dataset.own = String(own);
   form.elements.username.readOnly = own;
   form.elements.role.disabled = own; form.elements.active.disabled = own;
-  $('user-current-password').hidden = !own; form.elements.current_password.required = own;
+  $('user-current-password').hidden = !own; form.elements.current_password.required = false;
   $('user-security').hidden = !own;
   $('user-security-other').hidden = own;
   $('user-security-other').textContent = !user ? 'O 2FA é opcional. Após o cadastro, o próprio usuário pode ativá-lo aqui, confirmando um código por e-mail.' : `2FA ${user.two_factor_enabled ? 'ativado' : 'desativado'}. Por escolha pessoal, a ativação ou desativação deve ser feita pelo próprio usuário na edição de seu cadastro.`;
@@ -422,6 +422,10 @@ $('add-user').onclick = () => openUser();
 $('profile-access').onclick = () => openUser({ ...currentUser, active: true });
 $('close-user').onclick = () => $('user-dialog').close();
 $('user-form').elements.role.onchange = roleFields;
+$('user-form').elements.password.oninput = () => {
+  const form = $('user-form');
+  form.elements.current_password.required = form.dataset.own === 'true' && form.elements.password.value !== '';
+};
 $('user-form').onsubmit = async event => {
   event.preventDefault(); const f = event.target.elements;
   const user = { name: f.name.value, username: f.username.value, email: f.email.value, password: f.password.value, role: f.role.value, active: f.active.checked,

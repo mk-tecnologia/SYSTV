@@ -1,5 +1,10 @@
 # Histórico
 
+## 2.3.1
+
+- Permite editar nome e e-mail do próprio usuário sem informar senha.
+- Campo de nova senha vazio preserva a senha atual; troca de senha e 2FA continuam exigindo a senha atual.
+
 ## 2.3.0
 
 - Primeiro administrador criado pelo usuário no navegador com link de uso único.

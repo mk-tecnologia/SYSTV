@@ -335,9 +335,17 @@ test('API com MariaDB real, múltiplas TVs e sessões persistentes', { timeout: 
       assert.equal((await own('mail-settings')).status, 403);
       assert.equal((await own('mail-settings', 'PUT', relay)).status, 403);
       assert.equal((await own('account/email', 'PUT', { email: 'bad', password: input.password })).status, 400);
-      assert.equal((await own('account/profile', 'PUT', { name: 'Atualizada', email: input.email, current_password: 'wrong' })).status, 400);
-      assert.equal((await own('account/profile', 'PUT', { name: 'Atualizada', email: input.email, current_password: input.password, role: 'admin' })).status, 200);
+      const beforePassword = (await db.query('SELECT password_hash FROM users WHERE id=?', [id]))[0].password_hash;
+      assert.equal((await own('account/profile', 'PUT', { name: 'Atualizada', email: 'updated@example.com', role: 'admin' })).status, 200);
+      assert.equal((await (await own('account')).json()).email, 'updated@example.com');
+      assert.equal((await own('account/profile', 'PUT', { name: 'Atualizada', email: input.email, password: '' })).status, 200);
+      assert.equal((await db.query('SELECT password_hash FROM users WHERE id=?', [id]))[0].password_hash, beforePassword);
+      assert.equal((await own('account/profile', 'PUT', { name: 'Atualizada', email: input.email, password: 'replacement-password' })).status, 400);
+      assert.equal((await own('account/profile', 'PUT', { name: 'Atualizada', email: input.email, password: 'replacement-password', current_password: 'wrong' })).status, 400);
       const ownProfile = (await (await own('session')).json()).user; assert.equal(ownProfile.name, 'Atualizada'); assert.equal(ownProfile.role, 'editor');
+      assert.equal((await own('account/profile', 'PUT', { name: 'Atualizada', email: input.email, password: 'replacement-password', current_password: input.password })).status, 200);
+      assert.notEqual((await db.query('SELECT password_hash FROM users WHERE id=?', [id]))[0].password_hash, beforePassword);
+      input.password = 'replacement-password';
       const enable = await own('account/2fa/start', 'POST', { password: input.password }); assert.equal(enable.status, 200); const enabling = await enable.json();
       const enableCode = sentMail.at(-1).text.match(/\b[0-9]{6}\b/)[0];
       assert.equal((await own('account/2fa/confirm', 'POST', { challenge: enabling.challenge, code: 'abcdef' })).status, 400);
@@ -348,6 +356,7 @@ test('API com MariaDB real, múltiplas TVs e sessões persistentes', { timeout: 
       assert.equal((await own('account/2fa/confirm', 'POST', { challenge: enabling.challenge, code: enableCode })).status, 200);
       assert.equal((await own('account/2fa/confirm', 'POST', { challenge: enabling.challenge, code: enableCode })).status, 400);
       assert.equal((await own('account/email', 'PUT', { email: 'different@example.com', password: input.password })).status, 409);
+      assert.equal((await own('account/profile', 'PUT', { name: 'Atualizada', email: 'different@example.com' })).status, 409);
       assert.equal((await call('users', 'PUT', { ...input, id, email: 'different@example.com', password: '' })).status, 409);
       assert.equal((await call('mail-settings', 'PUT', { ...relay, enabled: false })).status, 409);
       const challengeResponse = await call('login', 'POST', { username: input.username, password: input.password }, false);
