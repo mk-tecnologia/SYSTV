@@ -74,6 +74,7 @@ install -d -m 0700 -o systv -g systv "$WORK/npm-cache"
 runuser -u systv -- env PATH=/opt/systv/node/bin:/usr/bin:/bin npm_config_cache="$WORK/npm-cache" \
   /bin/sh -c 'cd /opt/systv/app && npm ci --omit=dev --ignore-scripts'
 chown -R root:root /opt/systv/app
+chmod -R go+rX /opt/systv/app
 install -d -m 0750 -o root -g systv /etc/systv
 DB_PASSWORD=$(openssl rand -hex 32)
 ADMIN_PASSWORD=$(openssl rand -hex 16)
