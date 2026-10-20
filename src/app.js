@@ -1,3 +1,4 @@
+import { createVersionStatus } from './version.js';
 import { createActivation, sealActivation } from './activation.js';
 import { createMailer } from './mail.js';
 import http from 'node:http';
@@ -25,6 +26,7 @@ export async function createApp(db, config, dependencies = {}) {
   const mailer = createMailer(db, config, dependencies.mail);
   const auth = createAuth(db, config, mailer);
   const users = createUsers(db);
+  const versionStatus = await createVersionStatus(dependencies.version);
   const logos = createLogos(db);
   const presence = createPresence(db);
   const events = await createEvents(repository);
@@ -71,6 +73,7 @@ export async function createApp(db, config, dependencies = {}) {
         if (route === '/api/password/forgot' && method === 'POST') return json(res, 200, await auth.forgot(req, await readBody(req)));
         if (route === '/api/password/reset' && method === 'POST') return json(res, 200, await auth.reset(req, await readBody(req)));
         if (!user) throw new HttpError(401, 'Entre para continuar.');
+        if (route === '/api/version' && method === 'GET') return json(res, 200, await versionStatus());
         if (route === '/api/logout' && method === 'POST') {
           await auth.logout(req, res);
           return json(res, 200, { ok: true });

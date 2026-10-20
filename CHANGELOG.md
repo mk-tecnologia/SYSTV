@@ -1,5 +1,10 @@
 # Histórico
 
+## 2.4.0
+
+- Versão instalada em destaque no cabeçalho do painel, com aviso e link para novas versões.
+- Consulta de releases estáveis pelo servidor com cache e tolerância a intranets sem internet.
+
 ## 2.3.1
 
 - Permite editar nome e e-mail do próprio usuário sem informar senha.

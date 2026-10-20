@@ -79,9 +79,27 @@ function setUser(user) {
   render();
 }
 
+let versionCheckedAt = 0, versionPending = false;
+async function refreshVersion() {
+  if (versionPending || Date.now() - versionCheckedAt < 5 * 60 * 1000) return;
+  versionPending = true;
+  try {
+    const info = await api('version');
+    $('installed-version').textContent = `SYSTV v${info.current}`;
+    $('version-status').textContent = info.update_available ? `Nova versão: v${info.latest} ↗` : info.status === 'checked' ? 'Versão atualizada' : 'Verificação indisponível';
+    $('version-box').classList.toggle('has-update', info.update_available);
+    $('version-box').href = info.release_url;
+    $('version-box').title = info.update_available ? 'Veja as novidades. Para atualizar, peça ao responsável pelo servidor para executar systvctl update.' : 'Consultar versões publicadas no GitHub';
+    versionCheckedAt = Date.now();
+  } catch {
+    $('version-status').textContent = 'Verificação indisponível';
+  } finally { versionPending = false; }
+}
+
 async function refreshSession() {
   const session = await api('session');
   setUser(session.user);
+  if (session.user) refreshVersion();
 }
 
 function showSection(value) {

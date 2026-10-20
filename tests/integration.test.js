@@ -26,7 +26,7 @@ test('API com MariaDB real, múltiplas TVs e sessões persistentes', { timeout: 
   async function start() {
     db = createDatabase({ ...config.database, database: name,
       user: process.env.TEST_DB_USER || 'root', password: process.env.TEST_DB_PASSWORD || 'root' });
-    app = await createApp(db, { ...config, password: 'integration-password', secureCookie: false, origin: 'https://systv.example', production: false, mailEncryptionKey: 'a'.repeat(64) }, { mail: mailDependencies });
+    app = await createApp(db, { ...config, password: 'integration-password', secureCookie: false, origin: 'https://systv.example', production: false, mailEncryptionKey: 'a'.repeat(64) }, { mail: mailDependencies, version: { fetch: async () => ({ ok: true, json: async () => ({ tag_name: 'v99.0.0' }) }) } });
     await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
     base = `http://127.0.0.1:${app.server.address().port}`;
   }
@@ -333,6 +333,9 @@ test('API com MariaDB real, múltiplas TVs e sessões persistentes', { timeout: 
       const own = (route, method='GET', data) => call(route, method, data, false, { Cookie: accountCookie });
       assert.equal((await (await own('account')).json()).two_factor_enabled, false);
       assert.equal((await own('mail-settings')).status, 403);
+      assert.equal((await call('version', 'GET', undefined, false)).status, 401);
+      const version = await (await own('version')).json();
+      assert.equal(version.update_available, true); assert.equal(version.latest, '99.0.0');
       assert.equal((await own('mail-settings', 'PUT', relay)).status, 403);
       assert.equal((await own('account/email', 'PUT', { email: 'bad', password: input.password })).status, 400);
       const beforePassword = (await db.query('SELECT password_hash FROM users WHERE id=?', [id]))[0].password_hash;
