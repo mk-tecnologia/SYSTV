@@ -30,17 +30,20 @@ systvctl backup
 python3 - <<'PY'
 import json
 from pathlib import Path
-Path('VERSION').write_text('2.1.1\n')
+major, minor, patch = map(int, Path('VERSION').read_text().strip().split('.'))
+version = f'{major}.{minor}.{patch + 1}'
+Path('VERSION').write_text(version + '\n')
 for file in ['package.json', 'package-lock.json']:
     path = Path(file)
     data = json.loads(path.read_text())
-    data['version'] = '2.1.1'
+    data['version'] = version
     if file.endswith('lock.json'):
-        data['packages']['']['version'] = '2.1.1'
+        data['packages']['']['version'] = version
     path.write_text(json.dumps(data))
 PY
+NEXT_VERSION=$(cat VERSION)
 bash deploy/debian/install.sh --update
-[[ $(cat /opt/systv/current/VERSION) == 2.1.1 ]]
+[[ $(cat /opt/systv/current/VERSION) == "$NEXT_VERSION" ]]
 [[ $(sha256sum /etc/systv/systv.env) == "$ENV_HASH" ]]
 [[ $(readlink -f /opt/systv/current) != "$FIRST" ]]
 systvctl rollback

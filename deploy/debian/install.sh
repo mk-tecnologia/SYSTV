@@ -86,9 +86,9 @@ on_error() {
 trap cleanup EXIT
 trap 'on_error "$LINENO"' ERR
 export DEBIAN_FRONTEND=noninteractive
-apt-get update
-apt-get install -y ca-certificates curl xz-utils openssl mariadb-server nginx rsync python3
 if [[ $MODE == install ]]; then
+  apt-get update
+  apt-get install -y ca-certificates curl xz-utils openssl mariadb-server nginx rsync python3
   systemctl enable --now mariadb
   [[ $(mariadb --batch --skip-column-names -e "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='systv'") == 0 ]] || fail 'Banco systv já existe; preservado.'
   [[ $(mariadb --batch --skip-column-names -e "SELECT COUNT(*) FROM mysql.user WHERE User='systv'") == 0 ]] || fail 'Usuário MariaDB systv já existe; preservado.'
