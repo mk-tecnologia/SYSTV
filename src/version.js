@@ -11,8 +11,9 @@ export function isNewerVersion(candidate, current) {
 
 export async function createVersionStatus({ fetch: request = globalThis.fetch, now = Date.now } = {}) {
   const current = (await readFile(new URL('../VERSION', import.meta.url), 'utf8')).trim();
-  let cached, expires = 0, pending;
+  let cached, expires = 0, pending, lastAttempt = -Infinity;
   async function check() {
+    lastAttempt = now();
     try {
       const response = await request('https://api.github.com/repos/mk-tecnologia/systv/releases/latest', {
         headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'SYSTV-version-check' },
@@ -21,18 +22,18 @@ export async function createVersionStatus({ fetch: request = globalThis.fetch, n
       if (!response.ok) throw new Error('Release indisponível');
       const release = await response.json();
       if (!parts(release.tag_name) || release.draft || release.prerelease) throw new Error('Release inválida');
-      cached = { current, latest: release.tag_name.replace(/^v/, ''), status: 'checked',
+      cached = { current, latest: release.tag_name.replace(/^v/, ''), status: 'checked', checked_at: new Date(now()).toISOString(),
         update_available: isNewerVersion(release.tag_name, current),
         release_url: `${repository}/releases/tag/${encodeURIComponent(release.tag_name)}` };
-      expires = now() + 60 * 60 * 1000;
+      expires = now() + 5 * 60 * 1000;
     } catch {
-      cached = { current, latest: null, status: 'unavailable', update_available: false, release_url: `${repository}/releases/latest` };
+      cached = { current, latest: null, status: 'unavailable', checked_at: new Date(now()).toISOString(), update_available: false, release_url: `${repository}/releases/latest` };
       expires = now() + 5 * 60 * 1000;
     }
     return cached;
   }
-  return async () => {
-    if (cached && now() < expires) return cached;
+  return async ({ refresh = false } = {}) => {
+    if (cached && now() < expires && (!refresh || now() - lastAttempt < 30000)) return cached;
     if (!pending) pending = check().finally(() => { pending = undefined; });
     return pending;
   };

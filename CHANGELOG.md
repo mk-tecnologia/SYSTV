@@ -1,5 +1,10 @@
 # Histórico
 
+## 2.4.3
+
+- Reduz cache de releases para cinco minutos e adiciona verificação manual com horário da consulta.
+- Reserva espaço da barra de rolagem ao alternar páginas e contém a tabela de usuários na área de conteúdo.
+
 ## 2.4.2
 
 - Padroniza controles de tema, perfil e saída com altura de 44px, borda e raio de 7px dos botões secundários.

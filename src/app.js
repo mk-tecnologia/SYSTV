@@ -73,7 +73,7 @@ export async function createApp(db, config, dependencies = {}) {
         if (route === '/api/password/forgot' && method === 'POST') return json(res, 200, await auth.forgot(req, await readBody(req)));
         if (route === '/api/password/reset' && method === 'POST') return json(res, 200, await auth.reset(req, await readBody(req)));
         if (!user) throw new HttpError(401, 'Entre para continuar.');
-        if (route === '/api/version' && method === 'GET') return json(res, 200, await versionStatus());
+        if (route === '/api/version' && method === 'GET') return json(res, 200, await versionStatus({ refresh: url.searchParams.get('refresh') === '1' }));
         if (route === '/api/logout' && method === 'POST') {
           await auth.logout(req, res);
           return json(res, 200, { ok: true });

@@ -81,20 +81,29 @@ function setUser(user) {
 }
 
 let versionCheckedAt = 0, versionPending = false;
-async function refreshVersion() {
-  if (versionPending || Date.now() - versionCheckedAt < 5 * 60 * 1000) return;
+async function refreshVersion(force = false) {
+  if (versionPending || !force && Date.now() - versionCheckedAt < 60000) return;
   versionPending = true;
+  $('version-refresh').disabled = true;
+  $('version-refresh').textContent = 'Verificando…';
   try {
-    const info = await api('version');
+    const info = await api(force ? 'version?refresh=1' : 'version');
     $('installed-version').textContent = `v${info.current}`;
-    $('version-status').textContent = info.update_available ? `Nova versão: v${info.latest} ↗` : info.status === 'checked' ? 'Atualizado' : 'Sem verificação';
+    $('version-status').textContent = info.update_available ? `Nova versão: v${info.latest} ↗` : info.status === 'checked' ? 'Nenhuma nova versão' : 'Verificação indisponível';
     $('version-box').classList.toggle('has-update', info.update_available);
     $('version-box').href = info.release_url;
     $('version-box').title = info.status === 'unavailable' ? 'Não foi possível consultar atualizações. Verifique o acesso do servidor à internet.' : info.update_available ? 'Veja as novidades. Para atualizar, peça ao responsável pelo servidor para executar systvctl update.' : 'Consultar versões publicadas no GitHub';
+    if (info.checked_at) $('version-status').title = `Consulta ao GitHub: ${new Date(info.checked_at).toLocaleString('pt-BR')}`;
     versionCheckedAt = Date.now();
   } catch {
-    $('version-status').textContent = 'Sem verificação';
-  } finally { versionPending = false; }
+    $('version-status').textContent = 'Verificação indisponível';
+    $('version-status').removeAttribute('title');
+    versionCheckedAt = Date.now();
+  } finally {
+    versionPending = false;
+    $('version-refresh').disabled = false;
+    $('version-refresh').textContent = 'Verificar agora';
+  }
 }
 
 async function refreshSession() {
@@ -437,6 +446,7 @@ $('delete-screen').onclick = async () => {
   try { await api('screens/' + selected, 'DELETE'); await refreshSession(); notice('TV excluída.'); }
   catch (error) { notice(error.message, true); }
 };
+$('version-refresh').onclick = () => refreshVersion(true);
 $('add-user').onclick = () => openUser();
 $('profile-access').onclick = () => openUser({ ...currentUser, active: true });
 $('close-user').onclick = () => $('user-dialog').close();

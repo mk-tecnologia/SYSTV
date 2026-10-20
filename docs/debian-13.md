@@ -292,4 +292,4 @@ emita e entregue outro para invalidá-lo e usar a nova origem.
 
 ### Versão no painel
 
-O cabeçalho mostra a versão instalada e avisa quando há uma release estável mais recente no GitHub. A consulta parte do servidor para `api.github.com`, sem credenciais, com cache de uma hora. Em caso de falta de internet, a versão instalada continua visível e a verificação é indicada como indisponível, com nova tentativa após cinco minutos. O aviso abre as notas da versão; a atualização continua pelo comando `systvctl update` no servidor.
+O cabeçalho mostra a versão instalada e avisa quando há uma release estável mais recente no GitHub. A consulta parte do servidor para `api.github.com`, sem credenciais, com cache de cinco minutos. Em caso de falta de internet, a versão instalada continua visível e a verificação é indicada como indisponível, com nova tentativa após cinco minutos. O botão “Verificar agora” renova a consulta, com intervalo mínimo de 30 segundos entre chamadas ao GitHub. O horário da consulta aparece ao passar o mouse pelo status. O aviso abre as notas da versão; a atualização continua pelo comando `systvctl update` no servidor.

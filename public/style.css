@@ -330,3 +330,21 @@ html[data-theme="dark"] .admin .topbar-inner .account{--control-bg:#19272f;--con
 .admin .topbar-inner .account button:focus-visible{outline:2px solid #009e93;outline-offset:3px}
 @media(max-width:1200px){.admin .topbar-inner .account .theme-picker button{padding:8px}}
 @media(max-width:380px){.admin .topbar-inner .account{gap:6px}.admin .topbar-inner .account .profile-access,.admin .topbar-inner .account #logout{padding-left:8px;padding-right:8px}}
+
+/* Preserva a largura ao alternar páginas com e sem rolagem vertical. */
+html:has(body.admin){scrollbar-gutter:stable}
+@supports not (scrollbar-gutter:stable){html:has(body.admin){overflow-y:scroll}}
+.admin main{min-width:0}
+.admin-section,#users-section .catalog,#users-section .table-wrap{min-width:0;max-width:100%}
+#users-section .catalog-heading{flex-wrap:wrap;gap:16px}
+#users-section .catalog-heading>div{flex:1;min-width:min(240px,100%)}
+#users-section .catalog-heading button{flex-shrink:0}
+#users-section .table-wrap{width:100%;overflow-x:auto}
+#users-section table{table-layout:fixed;min-width:900px}
+#users-section th:first-child{width:18%}#users-section th:nth-child(2){width:24%}#users-section th:nth-child(3){width:110px}#users-section th:nth-child(5){width:100px}#users-section th:last-child{width:170px}
+#users-section td:nth-child(-n+4){white-space:normal;overflow-wrap:anywhere;line-height:1.6}
+.admin .product-meta .version-refresh{margin:0;padding:2px 5px;border:0;border-radius:4px;background:transparent;color:#647980;font-size:10px;font-weight:500;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+.admin .product-meta .version-refresh:hover{color:#007f74;background:#eefaf7;filter:none}
+.admin .product-meta .version-refresh:focus-visible{outline:2px solid #009e93;outline-offset:2px}
+html[data-theme="dark"] .admin .product-meta .version-refresh{color:#9fb5bc}html[data-theme="dark"] .admin .product-meta .version-refresh:hover{color:#8bf0dc;background:#205048}
+.product-identity{flex-shrink:1;max-width:460px}
