@@ -3,7 +3,9 @@
 set -Eeuo pipefail
 SOURCE=/var/tmp/systv-source
 cd "$SOURCE"
-bash deploy/debian/install.sh --origin http://127.0.0.1
+if [[ ! -L /opt/systv/current ]]; then
+  bash deploy/debian/install.sh --origin http://127.0.0.1
+fi
 systvctl doctor
 # Exercita autenticação, inicialização vazia e permissões do serviço real.
 /opt/systv/node/bin/node --env-file=/etc/systv/systv.env --input-type=module <<'JS'

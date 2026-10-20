@@ -56,6 +56,18 @@ jobs:
           docker cp dist/systv-v$(cat VERSION).tar.gz systv-debian:/var/tmp/systv.tar.gz
           docker exec systv-debian tar -xzf /var/tmp/systv.tar.gz -C /var/tmp/systv-source
           docker cp tests/deploy/smoke.sh systv-debian:/var/tmp/smoke.sh
+      - name: Testar download e instalação da release publicada
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p /tmp/systv-bootstrap
+          gh release download "v$(cat VERSION)" --repo "$GITHUB_REPOSITORY" \
+            --pattern install.sh --dir /tmp/systv-bootstrap
+          docker cp /tmp/systv-bootstrap/install.sh systv-debian:/var/tmp/bootstrap.sh
+          docker exec -e GITHUB_TOKEN systv-debian bash /var/tmp/bootstrap.sh \
+            --version "v$(cat VERSION)" --origin http://127.0.0.1
       - name: Instalar, autenticar, atualizar, reverter e reiniciar
         run: |
           docker exec systv-debian bash /var/tmp/smoke.sh
