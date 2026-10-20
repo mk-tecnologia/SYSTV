@@ -1,5 +1,12 @@
 # Histórico
 
+## 2.4.4
+
+- Remove largura mínima e rolagem horizontal da lista de usuários.
+- Compacta a tabela, reúne nome/login/e-mail e usa ações com ícones identificados.
+- Adapta os campos em telas pequenas sem cortar informações.
+- Ações quebram de linha sem cortar botões ou expandir o conteúdo.
+
 ## 2.4.3
 
 - Reduz cache de releases para cinco minutos e adiciona verificação manual com horário da consulta.

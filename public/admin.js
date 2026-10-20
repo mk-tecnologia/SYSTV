@@ -212,7 +212,8 @@ function render() {
     badge.append(makeIcon(product.highlight ? 'tag' : 'receipt'), document.createTextNode(product.highlight ? 'Em oferta' : 'Preço normal'));
     badge.title = product.highlight ? 'Produto destacado como oferta no painel da TV.' : 'Produto exibido sem destaque de oferta no painel da TV.';
     tr.children[4].replaceChildren(badge);
-    const actions = document.createElement('td');
+    const actions = document.createElement('td'); actions.dataset.label = 'Ações'; actions.setAttribute('role', 'cell');
+    const buttons = document.createElement('div'); buttons.className = 'user-actions';
     actions.append(makeButton('Editar', () => openEditor(product)), makeButton('Excluir', async () => {
       if (!confirm(`Excluir “${product.name}”?`)) return;
       try { await api('products/' + product.id, 'DELETE'); notice('Produto excluído. TVs atualizadas.'); }
@@ -266,17 +267,33 @@ function renderUsers() {
   $('users').replaceChildren(...users.map(user => {
     const tr = document.createElement('tr');
     const names = user.role === 'admin' ? 'Todas as TVs' : user.screens.map(id => state.screens.find(s => s.id === id)?.name || id).join(', ') || 'Nenhuma TV';
-    for (const value of [user.name, user.username + (user.email ? ' · ' + user.email : ' · Sem e-mail'), user.role === 'admin' ? 'Administrador' : 'Operador', names, user.active ? 'Ativo' : 'Desativado']) {
-      const td = document.createElement('td'); td.textContent = value; tr.append(td);
+    const fields = [
+      ['Usuário', user.name],
+      ['Perfil', user.role === 'admin' ? 'Administrador' : 'Operador'], ['TVs permitidas', names], ['Status', user.active ? 'Ativo' : 'Desativado'],
+    ];
+    tr.setAttribute('role', 'row');
+    for (const [label, value] of fields) {
+      const td = document.createElement('td'); td.setAttribute('role', 'cell'); td.dataset.label = label;
+      if (label === 'Usuário') {
+        const name = document.createElement('span'); name.className = 'user-name'; name.textContent = user.name;
+        const login = document.createElement('span'); login.className = 'user-login'; login.textContent = user.username + (user.email ? ' · ' + user.email : ' · Sem e-mail');
+        td.append(name, login);
+      } else td.textContent = value;
+      tr.append(td);
     }
-    const actions = document.createElement('td');
+    const actions = document.createElement('td'); actions.dataset.label = 'Ações'; actions.setAttribute('role', 'cell');
+    const buttons = document.createElement('div'); buttons.className = 'user-actions';
     const del = makeButton('Excluir', async () => {
       if (!confirm(`Excluir o usuário “${user.name}”?`)) return;
       try { await api('users/' + user.id, 'DELETE'); await loadUsers(); notice('Usuário excluído.'); }
       catch (error) { notice(error.message, true); }
     }, true);
     del.disabled = user.id === currentUser.id;
-    actions.append(makeButton('Editar', () => openUser(user))); if (currentUser.role === 'admin') actions.append(del); tr.append(actions); return tr;
+    const edit = makeButton('Editar', () => openUser(user));
+    for (const [button, label, icon] of [[edit, 'Editar', 'edit'], [del, 'Excluir', 'delete']]) {
+      button.replaceChildren(makeIcon(icon)); button.title = `${label} usuário ${user.name}`; button.setAttribute('aria-label', button.title);
+    }
+    buttons.append(edit); if (currentUser.role === 'admin') buttons.append(del); actions.append(buttons); tr.append(actions); return tr;
   }));
 }
 
@@ -526,7 +543,8 @@ function renderUnits() {
     for (const value of [unit.code, unit.name, count]) {
       const cell = document.createElement('td'); cell.textContent = value; row.append(cell);
     }
-    const actions = document.createElement('td');
+    const actions = document.createElement('td'); actions.dataset.label = 'Ações'; actions.setAttribute('role', 'cell');
+    const buttons = document.createElement('div'); buttons.className = 'user-actions';
     const remove = makeButton('Excluir', async () => {
       if (!confirm(`Excluir a unidade ${unit.code}?`)) return;
       try { await api('units/' + encodeURIComponent(unit.code), 'DELETE'); state = await api('state'); render(); notice('Unidade excluída.'); }
