@@ -134,7 +134,8 @@ function availableScreens() {
 function makeButton(label, action, danger = false) {
   const button = document.createElement('button');
   button.type = 'button'; button.className = `small secondary${danger ? ' danger' : ''}`;
-  setButtonLabel(button, label, danger ? 'delete' : 'edit'); button.onclick = action;
+  button.append(makeIcon(danger ? 'delete' : 'edit'));
+  button.title = label; button.setAttribute('aria-label', label); button.onclick = action;
   return button;
 }
 
@@ -203,9 +204,10 @@ function render() {
   const visible = currentProducts.filter(product => product.name.toLocaleLowerCase().includes(query));
   renderCatalogPreview(products, currentProducts, pages, selectedScreen, query);
   $('products').replaceChildren(...visible.map(product => {
-    const tr = document.createElement('tr');
-    for (const value of [product.name + ' · ' + pageLabel(Math.floor(products.indexOf(product) / TV_PAGE_SIZE) + 1), 'R$ ' + money(product.price), product.unit, product.position, product.highlight ? 'Em oferta' : 'Preço normal']) {
-      const td = document.createElement('td'); td.textContent = value; tr.append(td);
+    const tr = document.createElement('tr'); tr.setAttribute('role', 'row');
+    const fields = [['Produto', product.name + ' · ' + pageLabel(Math.floor(products.indexOf(product) / TV_PAGE_SIZE) + 1)], ['Preço', 'R$ ' + money(product.price)], ['Unidade', product.unit], ['Ordem', product.position], ['Exibição na TV', product.highlight ? 'Em oferta' : 'Preço normal']];
+    for (const [label, value] of fields) {
+      const td = document.createElement('td'); td.setAttribute('role', 'cell'); td.dataset.label = label; td.textContent = value; tr.append(td);
     }
     const badge = document.createElement('span');
     badge.className = 'price-status ' + (product.highlight ? 'is-offer' : 'is-normal');
@@ -213,13 +215,13 @@ function render() {
     badge.title = product.highlight ? 'Produto destacado como oferta no painel da TV.' : 'Produto exibido sem destaque de oferta no painel da TV.';
     tr.children[4].replaceChildren(badge);
     const actions = document.createElement('td'); actions.dataset.label = 'Ações'; actions.setAttribute('role', 'cell');
-    const buttons = document.createElement('div'); buttons.className = 'user-actions';
-    actions.append(makeButton('Editar', () => openEditor(product)), makeButton('Excluir', async () => {
+    const buttons = document.createElement('div'); buttons.className = 'row-actions';
+    buttons.append(makeButton('Editar', () => openEditor(product)), makeButton('Excluir', async () => {
       if (!confirm(`Excluir “${product.name}”?`)) return;
       try { await api('products/' + product.id, 'DELETE'); notice('Produto excluído. TVs atualizadas.'); }
       catch (error) { notice(error.message, true); }
     }, true));
-    tr.append(actions); return tr;
+    actions.append(buttons); tr.append(actions); return tr;
   }));
   $('empty').hidden = visible.length > 0;
   $('delete-screen').disabled = state.screens.length <= 1;
@@ -282,7 +284,7 @@ function renderUsers() {
       tr.append(td);
     }
     const actions = document.createElement('td'); actions.dataset.label = 'Ações'; actions.setAttribute('role', 'cell');
-    const buttons = document.createElement('div'); buttons.className = 'user-actions';
+    const buttons = document.createElement('div'); buttons.className = 'row-actions';
     const del = makeButton('Excluir', async () => {
       if (!confirm(`Excluir o usuário “${user.name}”?`)) return;
       try { await api('users/' + user.id, 'DELETE'); await loadUsers(); notice('Usuário excluído.'); }
@@ -538,21 +540,21 @@ function renderUnitOptions() {
 }
 function renderUnits() {
   $('units').replaceChildren(...(state?.units || []).map(unit => {
-    const row = document.createElement('tr');
+    const row = document.createElement('tr'); row.setAttribute('role', 'row');
     const count = state.products.filter(product => product.unit === unit.code).length;
-    for (const value of [unit.code, unit.name, count]) {
-      const cell = document.createElement('td'); cell.textContent = value; row.append(cell);
+    for (const [label, value] of [['Sigla', unit.code], ['Descrição', unit.name], ['Produtos', count]]) {
+      const cell = document.createElement('td'); cell.setAttribute('role', 'cell'); cell.dataset.label = label; cell.textContent = value; row.append(cell);
     }
     const actions = document.createElement('td'); actions.dataset.label = 'Ações'; actions.setAttribute('role', 'cell');
-    const buttons = document.createElement('div'); buttons.className = 'user-actions';
+    const buttons = document.createElement('div'); buttons.className = 'row-actions';
     const remove = makeButton('Excluir', async () => {
       if (!confirm(`Excluir a unidade ${unit.code}?`)) return;
       try { await api('units/' + encodeURIComponent(unit.code), 'DELETE'); state = await api('state'); render(); notice('Unidade excluída.'); }
       catch (error) { notice(error.message, true); }
     }, true);
     remove.disabled = count > 0 || state.units.length <= 1;
-    remove.title = count ? 'Esta unidade está em uso por produtos.' : '';
-    actions.append(makeButton('Editar', () => openUnit(unit)), remove);
+    if (count) remove.title = 'Esta unidade está em uso por produtos.';
+    buttons.append(makeButton('Editar', () => openUnit(unit)), remove); actions.append(buttons);
     row.append(actions); return row;
   }));
 }

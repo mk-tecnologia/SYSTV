@@ -1,5 +1,12 @@
 # Histórico
 
+## 2.5.0
+
+- Consolida o CSS em uma base compartilhada de cores, bordas, raios, tipografia e espaçamentos.
+- Padroniza cabeçalho, painéis, formulários, diálogos, listas, login, ativação, prévias e componentes da TV.
+- Usa ações e adaptação responsiva comuns nas listas de produtos, unidades e usuários.
+- Adiciona diretriz permanente de layout e prévia local com dados fictícios e medição de excesso horizontal.
+
 ## 2.4.4
 
 - Remove largura mínima e rolagem horizontal da lista de usuários.
