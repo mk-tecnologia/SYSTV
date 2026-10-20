@@ -26,6 +26,10 @@ with (out / name).open('wb') as raw:
         with tarfile.open(fileobj=compressed, mode='w') as tar:
             for path in sorted(paths):
                 assert not path.is_symlink(), f'Link não permitido: {path}'
+                relative = path.relative_to(ROOT)
+                assert not ({'.env', '.git', '.ddev', '.idea', 'data', 'backups', 'node_modules'} & set(relative.parts)), f'Caminho privado: {relative}'
+                assert not any(part.startswith('.env') for part in relative.parts), f'Ambiente privado: {relative}'
+                assert path.suffix.lower() not in {'.key', '.pem', '.crt', '.p12', '.pfx', '.sqlite'}, f'Arquivo privado: {relative}'
                 content = path.read_bytes()
                 info = tarfile.TarInfo(path.relative_to(ROOT).as_posix())
                 info.size = len(content)

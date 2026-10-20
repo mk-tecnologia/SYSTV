@@ -4,22 +4,25 @@ set -Eeuo pipefail
 SOURCE=/var/tmp/systv-source
 cd "$SOURCE"
 if [[ ! -L /opt/systv/current ]]; then
-  bash deploy/debian/install.sh --origin http://127.0.0.1
+  TEST_SCHEME=${SYSTV_TEST_TRANSPORT:-http}
+  bash deploy/debian/install.sh --origin "$TEST_SCHEME://127.0.0.1"
 fi
 systvctl doctor
 # Exercita autenticação, inicialização vazia e permissões do serviço real.
+if [[ -f /etc/systv/tls/server.crt ]]; then export NODE_EXTRA_CA_CERTS=/etc/systv/tls/server.crt; fi
 /opt/systv/node/bin/node --env-file=/etc/systv/systv.env --input-type=module <<'JS'
 import assert from 'node:assert/strict';
-const state = await (await fetch('http://127.0.0.1/api/state')).json();
+const state = await (await fetch(process.env.PUBLIC_ORIGIN + '/api/state')).json();
 assert.equal(state.products.length, 0);
 assert.equal(state.screens.length, 1);
 assert.equal(state.settings.name, 'Minha empresa');
-const login = await fetch('http://127.0.0.1/api/login', {
+const login = await fetch(process.env.PUBLIC_ORIGIN + '/api/login', {
   method: 'POST', headers: {'Content-Type': 'application/json', Origin: process.env.PUBLIC_ORIGIN},
   body: JSON.stringify({username: 'admin', password: process.env.ADMIN_PASSWORD}),
 });
 assert.equal(login.status, 200);
 assert.match(login.headers.get('set-cookie'), /HttpOnly/);
+if (process.env.COOKIE_SECURE === 'true') assert.match(login.headers.get('set-cookie'), /Secure/);
 assert.equal(process.env.NODE_ENV, 'production');
 assert.equal(process.env.HOST, '127.0.0.1');
 JS
@@ -58,3 +61,5 @@ for _attempt in {1..30}; do
   sleep 1
 done
 curl --fail --silent --show-error http://127.0.0.1/api/health
+
+bash /var/tmp/web-smoke.sh

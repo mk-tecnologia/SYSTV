@@ -17,6 +17,19 @@ case "$COMMAND" in
     nginx -t
     curl --fail --silent --show-error http://127.0.0.1:3000/api/health
     printf '\n'
+    WEB_ORIGIN=$(/opt/systv/node/bin/node --env-file=/etc/systv/systv.env --input-type=module -e 'console.log(process.env.PUBLIC_ORIGIN || "")')
+    WEB_HOST=${WEB_ORIGIN#*://}
+    WEB_PORT=80
+    WEB_CURL_ARGS=()
+    if [[ $WEB_ORIGIN == https://* ]]; then
+      WEB_PORT=443
+      if [[ -f /etc/systv/web-mode && $(cat /etc/systv/web-mode) != letsencrypt ]]; then
+        WEB_CURL_ARGS+=(--cacert /etc/systv/tls/server.crt)
+        openssl x509 -in /etc/systv/tls/server.crt -noout -enddate
+      fi
+    fi
+    curl --fail --silent --show-error --noproxy '*' "${WEB_CURL_ARGS[@]}" --resolve "$WEB_HOST:$WEB_PORT:127.0.0.1" "$WEB_ORIGIN/api/health"
+    printf '\n'
     systemctl list-timers systv-backup.timer ;;
   backup)
     # Compartilha o mesmo lock entre execuções manuais e agendadas.
@@ -36,6 +49,8 @@ case "$COMMAND" in
     if [[ ${1:-} == --scheduled ]]; then
       find /var/backups/systv -mindepth 1 -maxdepth 1 -type d -name '20*T*Z-*' -mtime +14 -exec rm -rf -- {} +
     fi ;;
+  web)
+    exec bash /opt/systv/current/deploy/debian/configure-web.sh "$@" ;;
   update)
     # Reutiliza o bootstrap da release ativa, nunca baixa a branch main.
     exec bash /opt/systv/current/install.sh --update "$@" ;;
@@ -76,6 +91,6 @@ case "$COMMAND" in
     printf '%s\n' "$OLD" > /etc/systv/previous-release
     echo 'Código revertido. Migrações do banco não foram desfeitas.' ;;
   help|--help|-h)
-    echo 'Uso: systvctl {version|doctor|backup|update [--version vX.Y.Z]|rollback [release]}' ;;
+    echo 'Uso: systvctl {version|doctor|backup|web [opções]|update [--version vX.Y.Z]|rollback [release]}' ;;
   *) fail "Comando desconhecido: $COMMAND" ;;
 esac

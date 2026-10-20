@@ -6,22 +6,31 @@ SOURCE=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 ORIGIN=''
 EMAIL=''
 MODE=install
+TLS_MODE=''
+TLS_CERT=''
+TLS_KEY=''
 usage() {
   cat <<'HELP'
 SYSTV — Debian 13
-Uso: install.sh [--origin http://IP-ou-host | --origin https://dominio --email contato@dominio]
+Uso: install.sh [--origin http://IP-ou-host | --origin https://host --tls self-signed]
      install.sh --update
+     install.sh --configure-web [--origin URL] [--tls self-signed|none|provided|letsencrypt]
+HTTPS local é padrão; use --tls letsencrypt apenas em servidor público.
 Sem parâmetros, solicita a URL de acesso. Instala releases em /opt/systv/releases.
 HELP
 }
 fail() { echo "Erro: $*" >&2; exit 1; }
 while (($#)); do
   case "$1" in
-    --origin|--email)
+    --origin|--email|--tls|--tls-cert|--tls-key)
       (($# >= 2)) || fail "Falta valor para $1"
-      if [[ $1 == --origin ]]; then ORIGIN=$2; else EMAIL=$2; fi
+      case $1 in
+        --origin) ORIGIN=$2 ;; --email) EMAIL=$2 ;; --tls) TLS_MODE=$2 ;;
+        --tls-cert) TLS_CERT=$2 ;; --tls-key) TLS_KEY=$2 ;;
+      esac
       shift 2 ;;
-    --update) MODE=update; shift ;;
+    --update) [[ $MODE == install ]] || fail "Escolha uma operação."; MODE=update; shift ;;
+    --configure-web) [[ $MODE == install ]] || fail "Escolha uma operação."; MODE=configure-web; shift ;;
     -h|--help) usage; exit 0 ;;
     *) fail "Opção desconhecida: $1" ;;
   esac
@@ -34,6 +43,15 @@ source /etc/os-release
 [[ -f $SOURCE/VERSION && -f $SOURCE/package-lock.json ]] || fail 'Pacote incompleto.'
 VERSION=$(cat "$SOURCE/VERSION")
 [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail 'Versão inválida.'
+if [[ $MODE == configure-web ]]; then
+  WEB_ARGS=()
+  [[ -z $ORIGIN ]] || WEB_ARGS+=(--origin "$ORIGIN")
+  [[ -z $TLS_MODE ]] || WEB_ARGS+=(--tls "$TLS_MODE")
+  [[ -z $TLS_CERT ]] || WEB_ARGS+=(--tls-cert "$TLS_CERT")
+  [[ -z $TLS_KEY ]] || WEB_ARGS+=(--tls-key "$TLS_KEY")
+  [[ -z $EMAIL ]] || WEB_ARGS+=(--email "$EMAIL")
+  exec bash "$SOURCE/deploy/debian/configure-web.sh" "${WEB_ARGS[@]}"
+fi
 # Instalações/atualizações concorrentes nunca alteram a mesma release.
 exec 9>/run/lock/systv-deploy.lock
 flock -n 9 || fail 'Outra instalação ou manutenção está em andamento.'
@@ -47,16 +65,16 @@ if [[ $MODE == install ]]; then
     [[ -t 0 || -r /dev/tty ]] || fail 'Informe --origin para instalação sem terminal.'
     read -r -p 'URL de acesso (ex.: https://tv.exemplo.com ou http://192.168.1.10): ' ORIGIN < /dev/tty
   fi
-  [[ $ORIGIN =~ ^(http|https)://([a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?)$ ]] || fail 'URL inválida: use http://IP-ou-host ou https://dominio, sem porta/caminho/barra final.'
-  SCHEME=${BASH_REMATCH[1]}
-  SITE_HOST=${BASH_REMATCH[2]}
-  if [[ $SCHEME == https ]]; then
-    if [[ -z $EMAIL ]]; then read -r -p 'E-mail para certificado HTTPS: ' EMAIL < /dev/tty; fi
-    [[ $EMAIL =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]] || fail 'HTTPS exige e-mail válido.'
+  # HTTPS sem modo explícito é local; Certbot só é usado por opção explícita.
+  if [[ $TLS_MODE == letsencrypt && -z $EMAIL ]]; then
+    read -r -p 'E-mail para certificado público: ' EMAIL < /dev/tty
   fi
+  # shellcheck disable=SC1091
+  source "$SOURCE/deploy/debian/web-common.sh"
+  web_validate
 else
   [[ -L /opt/systv/current && -f /etc/systv/systv.env ]] || fail 'Instalação por releases não encontrada.'
-  [[ -z $ORIGIN && -z $EMAIL ]] || fail 'Atualização preserva a URL e configuração existentes.'
+  [[ -z $ORIGIN && -z $EMAIL && -z $TLS_MODE && -z $TLS_CERT && -z $TLS_KEY ]] || fail 'Atualização preserva a URL e configuração existentes.'
 fi
 case "$(dpkg --print-architecture)" in
   amd64) NODE_ARCH=x64 ;;
@@ -169,25 +187,6 @@ for script in migrate setup-production; do
 done
 if [[ $MODE == install ]]; then
   install -m 0644 "$SOURCE/deploy/debian/systv.service" /etc/systemd/system/systv.service
-  cat > /etc/nginx/sites-available/systv <<NGINX
-server {
-    listen 80;
-    listen [::]:80;
-    server_name $SITE_HOST;
-    client_max_body_size 8m;
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Host \$host;
-        proxy_set_header Connection "";
-        proxy_buffering off;
-        proxy_cache off;
-        proxy_read_timeout 1h;
-    }
-}
-NGINX
-  ln -s /etc/nginx/sites-available/systv /etc/nginx/sites-enabled/systv
-  nginx -t
 fi
 ln -s "$RELEASE" /opt/systv/.current-new-$$
 mv -Tf /opt/systv/.current-new-$$ /opt/systv/current
@@ -202,13 +201,11 @@ systemctl enable --now systv-backup.timer
 systemctl enable systv nginx
 systemctl restart systv
 if [[ $MODE == install ]]; then
-  systemctl start nginx
-  systemctl reload nginx
-  if [[ $SCHEME == https ]]; then
-    apt-get install -y certbot python3-certbot-nginx
-    certbot --nginx --non-interactive --agree-tos --redirect --email "$EMAIL" -d "$SITE_HOST"
-    systemctl enable --now certbot.timer
-  fi
+  WEB_ARGS=(--origin "$ORIGIN" --tls "$TLS_MODE")
+  [[ -z $EMAIL ]] || WEB_ARGS+=(--email "$EMAIL")
+  [[ -z $TLS_CERT ]] || WEB_ARGS+=(--tls-cert "$TLS_CERT")
+  [[ -z $TLS_KEY ]] || WEB_ARGS+=(--tls-key "$TLS_KEY")
+  SYSTV_DEPLOY_LOCK_HELD=1 bash "$SOURCE/deploy/debian/configure-web.sh" "${WEB_ARGS[@]}"
 fi
 for _attempt in {1..30}; do
   if curl --fail --silent http://127.0.0.1:3000/api/health > /dev/null; then break; fi
@@ -216,11 +213,7 @@ for _attempt in {1..30}; do
 done
 systemctl is-active --quiet systv
 curl --fail --silent --show-error http://127.0.0.1:3000/api/health > /dev/null
-if [[ $MODE == install ]]; then
-  SITE_PORT=80
-  [[ $SCHEME != https ]] || SITE_PORT=443
-  curl --fail --silent --show-error --resolve "$SITE_HOST:$SITE_PORT:127.0.0.1" "$ORIGIN/api/health" > /dev/null
-fi
+
 if [[ -n $OLD_RELEASE ]]; then
   printf '%s\n' "$OLD_RELEASE" > /etc/systv/previous-release
 fi

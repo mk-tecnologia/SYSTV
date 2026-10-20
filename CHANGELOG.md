@@ -1,5 +1,14 @@
 # Histórico
 
+## 2.2.0
+
+- HTTPS local como padrão para URLs HTTPS, sem exigir servidor público.
+- Modos explícitos para certificado próprio, CA da empresa, HTTP e Let's Encrypt.
+- Recuperação de falha de Certbot sem reinstalar ou alterar banco/senhas.
+- Reconfiguração web transacional com snapshot e restauração em erro.
+- Revisão do histórico e de todas as releases públicas com Gitleaks.
+- Proteções e CI para impedir publicação acidental de segredos.
+
 ## 2.1.2
 
 - Aceita tokens de leitura do GitHub Actions no download privado.

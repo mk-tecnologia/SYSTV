@@ -14,3 +14,12 @@ backups/
 .ddev/
 dist/
 __pycache__/
+
+# Credenciais e artefatos privados de servidores.
+*.key
+*.pem
+*.crt
+*.p12
+*.pfx
+*.sqlite*
+/*.sql

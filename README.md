@@ -1,54 +1,72 @@
 # SYSTV — produção no Debian 13
 
 Painel de preços para múltiplas TVs, com administração, usuários, permissões,
-logos e atualização dos preços em tempo real. Este repositório distribui o
-sistema e seu instalador de produção.
+logos e atualização dos preços em tempo real. Instalador para Debian 13 amd64
+ou arm64 com systemd, sem depender de Docker/DDEV no servidor.
 
-O instalador configura Node.js 24, MariaDB, Nginx, serviço systemd,
-HTTPS opcional com renovação, senhas aleatórias, backups diários e releases
-com atualização e rollback. O catálogo de produção começa vazio, com uma TV.
-Não depende de Docker, DDEV, Git ou npm previamente instalados no servidor.
+## Instalação por link
 
-## Instalação
-
-Use Debian 13 amd64/arm64 com systemd, acesso root, internet e servidor
-dedicado. Para HTTPS, tenha um domínio apontando ao servidor e libere as
-portas 80 e 443. Na rede local, também é possível usar HTTP pelo IP fixo.
-
-**Distribuição privada:** este repositório exige acesso de leitura no GitHub.
-No servidor, como root:
-
-```bash
-apt-get update && apt-get install -y gh ca-certificates
-gh auth login
-install -d -m 700 /usr/local/src/systv-installer
-gh release download --repo mk-tecnologia/systv \
-  --pattern install.sh --clobber --dir /usr/local/src/systv-installer
-GITHUB_TOKEN="$(gh auth token)" bash /usr/local/src/systv-installer/install.sh
-```
-
-O assistente pede a URL e, para HTTPS, o e-mail do certificado. Ele baixa a
-última release estável, confere o checksum e provisiona o servidor. O token
-é usado apenas durante o download e não é persistido pela instalação.
-O login feito pelo `gh auth login` é mantido pelo próprio GitHub CLI.
-
-**Link de instalação para distribuição pública:** se o proprietário tornar o
-repositório público, o comando sem autenticação será:
+Como root, em um Debian 13 dedicado com acesso à internet para baixar os pacotes:
 
 ```bash
 apt-get update && apt-get install -y curl ca-certificates
 curl -fsSL https://github.com/mk-tecnologia/systv/releases/latest/download/install.sh \
-  -o /tmp/systv-install.sh && bash /tmp/systv-install.sh
+  -o /tmp/systv-install.sh
+bash /tmp/systv-install.sh
 ```
 
-Esse link não funciona anonimamente enquanto o repositório for privado.
-Para instalações sem perguntas:
+O assistente pede a URL de acesso e baixa a última release estável, verificando
+o SHA-256. Na intranet, por exemplo:
 
 ```bash
-# Acrescente GITHUB_TOKEN ao ambiente quando a distribuição for privada.
-bash /usr/local/src/systv-installer/install.sh \
-  --origin https://tv.exemplo.com.br --email admin@exemplo.com.br
+bash /tmp/systv-install.sh --origin https://tv.empresa.intranet
 ```
+
+HTTPS usa **certificado local por padrão**, sem contatar Let's Encrypt e sem
+precisar expor o servidor na internet. Distribua o certificado gerado aos
+computadores e TVs e configure a confiança nesses dispositivos; caso contrário,
+o navegador mostrará um alerta. Se a empresa tem uma CA, prefira um certificado
+dela. Veja as opções de certificado abaixo.
+
+A instalação configura Node.js 24, MariaDB, Nginx, serviço systemd, senhas
+aleatórias, backups diários e releases com atualização/rollback. O catálogo
+começa vazio, com uma TV.
+
+## Corrigir uma instalação interrompida no Certbot
+
+Não apague o banco nem reinstale. Baixe o instalador atual pelo comando acima e execute:
+
+```bash
+bash /tmp/systv-install.sh --configure-web --tls self-signed
+```
+
+O comando lê a URL já configurada e instala HTTPS local. Preserva o banco,
+as contas, a senha administrativa e a chave SMTP; salva uma cópia privada da
+configuração anterior. Também funciona para instalações das releases 2.1.x.
+Depois, `systvctl update` instala a versão mais nova do código e das ferramentas.
+
+## Escolher o modo de acesso
+
+| Modo | Quando usar | Opções |
+|---|---|---|
+| HTTPS local | Intranet sem CA; exige configurar confiança nos clientes | `--origin https://tv.empresa.intranet --tls self-signed` |
+| HTTPS com CA da empresa | Intranet com certificados corporativos | `--origin https://tv.empresa.intranet --tls provided --tls-cert /root/fullchain.pem --tls-key /root/server.key` |
+| HTTP | Rede local em que se aceita tráfego sem criptografia | `--origin http://tv.empresa.intranet --tls none` |
+| Let's Encrypt HTTP-01 | Domínio público com porta 80 acessível externamente | `--origin https://tv.exemplo.com.br --tls letsencrypt --email admin@exemplo.com.br` |
+
+Let’s Encrypt não emite para nomes `.intranet`, `.local` ou outros nomes
+internos. Para um domínio público em um servidor privado, é possível emitir
+por DNS-01 fora do instalador e importar o certificado com `provided`; não é
+necessário publicar o servidor na internet para esse fluxo.
+
+Na versão atual, altere a configuração existente usando as mesmas opções:
+
+```bash
+systvctl web --tls self-signed
+systvctl web --origin http://tv.empresa.intranet --tls none
+```
+
+O instalador não abre portas no firewall nem configura o DNS da rede.
 
 ## Primeiro acesso e operação
 
@@ -58,29 +76,25 @@ systvctl doctor
 systvctl version
 ```
 
-Entre na URL configurada com as credenciais geradas e troque a senha.
-Cadastre a empresa e os produtos; o link da primeira TV é `/tv?screen=tv01`.
+Entre com as credenciais geradas e troque a senha. Cadastre empresa e produtos;
+o link da primeira TV é `/tv?screen=tv01`.
 
 ```bash
 systvctl backup
-systvctl update                     # última release estável
-systvctl update --version v2.1.2    # versão específica
-systvctl rollback                  # código anterior, sem reverter o banco
+systvctl update
+systvctl update --version v2.2.0
+systvctl rollback
 journalctl -u systv -f
 ```
 
-Para atualizações privadas, prefixe o comando com
-`GITHUB_TOKEN="$(gh auth token)"`. As configurações e os dados são preservados;
-a atualização faz backup antes de aplicar migrações.
-
-[Guia completo de produção, backup e recuperação](docs/debian-13.md).
+[Guia de produção, certificados, backup e recuperação](docs/debian-13.md).
+[Revisão da exposição pública de segredos](docs/security-review.md).
 [Documentação funcional e desenvolvimento](docs/development.md).
 
-## Releases
+## Releases e verificação
 
-As versões estáveis usam tags `vX.Y.Z`. Cada release contém `install.sh`,
-`systv-vX.Y.Z.tar.gz` e `SHA256SUMS`. O pacote é reproduzível e não contém
-DDEV, dependências locais, testes, bancos, certificados, backups ou `.env`.
-A CI verifica o pacote e testa instalação, autenticação, atualização e rollback
-em Debian 13 descartável com systemd. Certificados públicos dependem do DNS
-e precisam ser conferidos no servidor de destino.
+Tags estáveis: `vX.Y.Z`. Cada release contém `install.sh`,
+`systv-vX.Y.Z.tar.gz` e `SHA256SUMS`. O pacote é reproduzível e exclui DDEV,
+dependências locais, testes, bancos, certificados, backups e `.env`.
+A CI executa Gitleaks em todo o histórico e testa a aplicação e o instalador
+em Debian 13 descartável com systemd real, tanto por HTTP quanto por HTTPS local.

@@ -4,6 +4,7 @@ import pathlib
 import subprocess
 import tarfile
 import unittest
+import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
@@ -28,6 +29,13 @@ class ProductionRelease(unittest.TestCase):
         for line in (ROOT / 'dist/SHA256SUMS').read_text().splitlines():
             checksum, filename = line.split()
             self.assertEqual(checksum, hashlib.sha256((ROOT / 'dist' / filename).read_bytes()).hexdigest())
+
+    def test_rejects_private_key_inside_runtime_tree(self):
+        with tempfile.NamedTemporaryFile(dir=ROOT / 'src', suffix='.key'):
+            result = subprocess.run(['python3', 'scripts/build-release.py'], cwd=ROOT, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn(b'Arquivo privado', result.stderr)
+        subprocess.run(['python3', 'scripts/build-release.py'], cwd=ROOT, check=True, capture_output=True)
 
 if __name__ == '__main__':
     unittest.main()

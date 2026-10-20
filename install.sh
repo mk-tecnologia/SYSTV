@@ -8,8 +8,10 @@ ARGS=()
 usage() {
   cat <<'HELP'
 SYSTV — instalação de produção no Debian 13
-Uso: bash install.sh [--version v2.1.0] [--origin https://tv.exemplo.com] [--email admin@exemplo.com]
-     bash install.sh --update [--version v2.1.0]
+Uso: bash install.sh [--version v2.2.0] [--origin https://tv.empresa.intranet] [--tls self-signed]
+     bash install.sh --update [--version v2.2.0]
+     bash install.sh --configure-web --tls self-signed
+HTTPS padrão: certificado local. Let’s Encrypt somente com --tls letsencrypt.
 Sem --origin, o assistente solicita os dados no terminal.
 Repositório privado: exporte GITHUB_TOKEN com permissão de leitura de conteúdo.
 HELP
