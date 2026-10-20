@@ -1,0 +1,33 @@
+"""Valida o contrato do pacote entregue ao instalador, sem dependências externas."""
+import hashlib
+import pathlib
+import subprocess
+import tarfile
+import unittest
+
+ROOT = pathlib.Path(__file__).resolve().parent.parent
+
+class ProductionRelease(unittest.TestCase):
+    def test_reproducible_and_no_local_data(self):
+        def build():
+            subprocess.run(['python3', 'scripts/build-release.py'], cwd=ROOT, check=True, capture_output=True)
+            version = (ROOT / 'VERSION').read_text().strip()
+            return (ROOT / 'dist' / f'systv-v{version}.tar.gz').read_bytes()
+        first = build()
+        self.assertEqual(first, build())
+        archive_path = ROOT / 'dist' / f'systv-v{(ROOT / "VERSION").read_text().strip()}.tar.gz'
+        with tarfile.open(archive_path) as archive:
+            paths = set(archive.getnames())
+            self.assertTrue({'VERSION', 'install.sh', 'server.js', 'scripts/setup-production.js',
+                             'deploy/debian/systv.service', 'deploy/debian/systvctl'} <= paths)
+            for name in paths:
+                parts = pathlib.PurePosixPath(name).parts
+                self.assertFalse({'.ddev', '.git', '.idea', 'data', 'backups', 'node_modules', 'tests'} & set(parts), name)
+                self.assertFalse(any(part.startswith('.env') for part in parts), name)
+            self.assertTrue(all(member.isfile() for member in archive.getmembers()))
+        for line in (ROOT / 'dist/SHA256SUMS').read_text().splitlines():
+            checksum, filename = line.split()
+            self.assertEqual(checksum, hashlib.sha256((ROOT / 'dist' / filename).read_bytes()).hexdigest())
+
+if __name__ == '__main__':
+    unittest.main()

@@ -1,0 +1,4 @@
+**
+!tests/
+!tests/deploy/
+!tests/deploy/Dockerfile

@@ -1,94 +1,163 @@
-# Instalação no Debian 13
+# SYSTV em produção — Debian 13
 
-Instalação inicial em servidor Debian 13 com systemd e acesso à internet, nas arquiteturas amd64 ou arm64. Execute com root/sudo. O instalador usa os pacotes MariaDB e Nginx do Debian e baixa a atualização atual do Node.js 24 do site oficial, conferindo SHA-256 via HTTPS. O runtime fica isolado em `/opt/systv/node`; a versão exata pode ser consultada com `/opt/systv/node/bin/node --version`.
+Consulte o [README](../README.md) para baixar e executar o instalador por link
+ou pelo GitHub CLI quando o repositório for privado. Execute como root.
 
-Use um servidor dedicado, sem banco/usuário `systv` ou instalações anteriores em `/opt/systv` e `/etc/systv`. O instalador recusa substituir esses recursos. Outros sites Nginx são preservados; confira conflitos de domínio/porta antes de instalar. O instalador não altera o firewall. Libere a porta 80 para as TVs e, com HTTPS, também a 443. A porta 3000 da aplicação escuta somente em loopback.
+## Requisitos e assistente
 
-## Instalar
+- Debian 13 amd64 ou arm64, com systemd e acesso à internet.
+- Servidor dedicado, sem banco/usuário `systv` ou instalação anterior.
+- Porta 80 acessível pelas TVs; para HTTPS, também 443 e domínio público
+  com DNS apontando ao servidor.
+- Acesso de leitura ao GitHub se o repositório continuar privado.
 
-Copie ou clone o projeto no servidor, entre na pasta e revise o script antes de executá-lo. O instalador não copia `.env`, bancos locais, backups ou dependências do computador de desenvolvimento.
+O assistente solicita uma URL, como `http://192.168.1.10` para rede local ou
+`https://tv.exemplo.com.br`. Para HTTPS, solicita o e-mail do Certbot e aceita
+os termos do Let's Encrypt. Não use caminho, porta ou barra final na URL.
+O modo não interativo aceita `--origin` e `--email`.
 
-Para rede local, substitua o IP pelo endereço fixo do servidor:
+HTTP transmite credenciais sem criptografia. Use HTTPS em redes sem confiança.
+IPs privados não podem usar o fluxo público do Let's Encrypt. O instalador
+não altera o firewall: preserve a porta de administração SSH e libere apenas
+80/443 para o serviço web. Não exponha 3000 ou MariaDB para as TVs.
 
-```sh
-sudo bash deploy/debian/install.sh --origin http://192.168.1.10
+O bootstrap baixa apenas uma **release estável**, nunca a branch `main`.
+`--version vX.Y.Z` fixa a versão. O checksum SHA-256 é obtido da mesma release
+via HTTPS: verifica integridade, mas não é uma assinatura independente.
+Para maior controle, revise o instalador e o conteúdo da release antes de executar.
+Em repositórios privados, use token de leitura de conteúdo restrito ao SYSTV;
+o token não é gravado pelo bootstrap nem pelo serviço.
+
+## Estrutura instalada
+
+```text
+/opt/systv/
+├── node/                      Node.js 24 isolado
+├── current -> releases/...    versão ativa
+└── releases/                  código e dependências por versão
+/etc/systv/
+├── systv.env                  configuração de produção e segredos
+├── acesso-inicial.txt         credenciais geradas, somente root
+└── previous-release           referência para rollback
+/var/backups/systv/            backups locais protegidos
+/var/log/systv/                logs de instalação e atualização
+/usr/local/sbin/systvctl       operação e diagnóstico
 ```
 
-HTTP transmite credenciais sem criptografia; use HTTPS em redes sem confiança. Para HTTPS automático, configure antes um domínio público apontando ao servidor, com portas 80 e 443 acessíveis pela internet:
+O serviço roda como `systv`, sem shell, com código pertencente a root e somente
+leitura para o processo. `NODE_ENV=production`; aplicação escuta apenas em
+`127.0.0.1:3000`, atrás do Nginx. SSE tem buffering desativado. O banco utiliza
+usuário exclusivo e senha aleatória. O administrador inicial também tem senha
+aleatória. A chave AES das credenciais SMTP é gerada individualmente.
+O catálogo inicial contém uma TV e nenhum produto de demonstração.
 
-```sh
-sudo bash deploy/debian/install.sh \
-  --origin https://tv.exemplo.com.br \
-  --email admin@exemplo.com.br
+```bash
+cat /etc/systv/acesso-inicial.txt
+systvctl version
+systvctl doctor
+journalctl -u systv -f
+systemctl status systv nginx mariadb systv-backup.timer
 ```
 
-O Certbot solicita um certificado Let's Encrypt, configura redirecionamento para HTTPS e habilita renovação automática. Esse comando aceita os termos do Let's Encrypt para o e-mail informado. IPs privados não podem usar esse fluxo de certificado público. A origem não deve conter porta, caminho ou barra final.
+Ajuste empresa, produtos e senha pelo painel. Configure SMTP para recuperação
+de senha e 2FA. Alterar `ADMIN_PASSWORD` no ambiente não redefine uma conta já
+criada. Preserve `MAIL_ENCRYPTION_KEY` para recuperar as credenciais SMTP.
+Após editar `systv.env`, reinicie `systv`.
 
-Ao terminar:
+## Atualização
 
-```sh
-sudo cat /etc/systv/acesso-inicial.txt
-sudo systemctl status systv
-curl --fail http://192.168.1.10/api/health
+```bash
+systvctl update
+systvctl update --version v2.1.0
+# Para repositório privado, por exemplo:
+GITHUB_TOKEN="$(gh auth token)" systvctl update
 ```
 
-Acesse a URL informada, entre como `admin` com a senha gerada e altere a senha no cadastro. A TV inicial está em `/tv?screen=tv01`. O banco começa com o catálogo de demonstração, que pode ser editado pela administração. O instalador não importa automaticamente o SQLite ou o MariaDB de desenvolvimento.
+A atualização baixa e verifica o pacote, instala dependências em outra pasta,
+verifica sharp, para a aplicação, faz backup e aplica migrações. A troca do link
+`current` é atômica. A aplicação fica indisponível durante backup/migrações e
+reinicialização; as TVs mantêm os últimos dados recebidos.
 
-## Arquivos e operação
+Se houver falha após parar ou ativar a nova versão, o instalador tenta reativar
+o código anterior. Não restaura nem desfaz migrações automaticamente.
+Migrações futuras devem preservar compatibilidade com a versão anterior.
 
-- `/opt/systv/app`: código e dependências, pertencentes a root.
-- `/opt/systv/node`: runtime Node.js 24.
-- `/etc/systv/systv.env`: configuração e segredos, leitura restrita a root e grupo systv.
-- `/etc/systv/acesso-inicial.txt`: senha inicial, legível apenas por root; não reflete trocas posteriores.
-- `/etc/systemd/system/systv.service`: aplicação executada pelo usuário sem privilégios `systv`.
-- `/etc/nginx/sites-available/systv`: proxy, com buffering desativado para atualizações SSE.
-- MariaDB: banco `systv`, usuário exclusivo com acesso apenas a esse banco. Não é necessário expor 3306 na rede.
+Instalações da primeira versão do instalador, com `/opt/systv/app` e sem
+`current`, são recusadas. Faça backup e planeje a migração para releases em um
+novo servidor; os dados não serão sobrescritos por este instalador.
 
-```sh
-sudo journalctl -u systv -f
-sudo systemctl restart systv
-sudo nginx -t
-sudo certbot renew --dry-run  # apenas nas instalações HTTPS
+## Rollback
+
+```bash
+systvctl rollback
+ls -1 /opt/systv/releases
+systvctl rollback v2.1.0-20261020T120000Z-1234
 ```
 
-Depois de editar `/etc/systv/systv.env`, reinicie `systv`. `PUBLIC_ORIGIN` deve coincidir com a URL usada pelos usuários. HTTPS exige `COOKIE_SECURE=true`. Alterar `ADMIN_PASSWORD` não redefine um administrador já criado. Preserve `MAIL_ENCRYPTION_KEY`: ela é necessária para recuperar as credenciais SMTP armazenadas no banco.
+O rollback cria backup e troca somente o código. Se a versão anterior não
+aceitar o schema atual, será necessário restaurar um backup compatível durante
+uma manutenção. Releases antigas são preservadas; remova manualmente apenas
+as que não forem `current` ou `previous-release` e após conferir backups.
 
 ## Backup e restauração
 
-O banco contém produtos, TVs, usuários, sessões e logos. Guarde também `/etc/systv` em armazenamento protegido, pois contém senhas e a chave de criptografia SMTP.
-
-```sh
-sudo install -d -m 0700 /var/backups/systv
-sudo bash -o pipefail -c 'umask 077; mariadb-dump --single-transaction --routines --triggers systv | gzip > /var/backups/systv/systv.sql.gz'
-sudo tar -czf /var/backups/systv/config.tar.gz -C /etc systv
+```bash
+systvctl backup
+systemctl list-timers systv-backup.timer
 ```
 
-Copie os backups para outro equipamento com acesso restrito. Para restaurar, pare a aplicação e use um backup conferido; a importação substitui dados conforme as instruções SQL do dump:
+O backup diário ocorre às 03:15, com atraso aleatório de até dez minutos e
+retenção de 14 dias. Cada diretório em `/var/backups/systv` contém:
 
-```sh
-sudo systemctl stop systv
-sudo bash -o pipefail -c 'gzip -dc /var/backups/systv/systv.sql.gz | mariadb systv'
-# Restaure também o systv.env correspondente, principalmente MAIL_ENCRYPTION_KEY.
-sudo systemctl start systv
+- `database.sql.gz`: banco com usuários, produtos, TVs, sessões e logos;
+- `config.tar.gz`: `/etc/systv`, incluindo chave SMTP e credenciais;
+- `VERSION` e `SHA256SUMS` para conferência.
+
+Os diretórios são acessíveis somente a root. O agendamento remove backups
+expirados apenas após um novo backup bem-sucedido. Não há cópia externa automática:
+transfira os backups regularmente para outro equipamento protegido.
+
+Para restaurar um backup conferido, durante manutenção:
+
+```bash
+cd /var/backups/systv/NOME-DO-BACKUP
+sha256sum --check SHA256SUMS
+systemctl stop systv
+# A importação substitui os dados conforme o SQL do dump.
+bash -o pipefail -c 'gzip -dc database.sql.gz | mariadb systv'
+tar -xzf config.tar.gz -C /etc
+systemctl start systv
+systvctl doctor
 ```
 
-## Atualizações e falhas
+Use configuração e código compatíveis com o backup. Uma restauração de banco
+em outro servidor requer ajustar também o usuário/senha MariaDB desse servidor.
+O dump do banco `systv` não recria as contas do servidor MariaDB.
 
-Este script é para instalação inicial e não oferece atualização ou rollback automático. Antes de atualizar, faça backup do banco e da configuração, pare o serviço, preserve a versão anterior de `/opt/systv/app`, copie o novo código e instale as dependências no servidor com o runtime de `/opt/systv/node`. Aplique as migrações antes de reiniciar:
+## Falhas e segurança operacional
 
-```sh
-sudo systemctl stop systv
-cd /opt/systv/app
-sudo -u systv /opt/systv/node/bin/node --env-file=/etc/systv/systv.env scripts/migrate.js
-sudo systemctl start systv
+A instalação inicial recusa recursos existentes para preservar dados. Uma
+falha parcial deixa arquivos para diagnóstico e não pode ser resolvida apagando
+bancos ou configuração indiscriminadamente. Confira o log indicado e
+`journalctl -u systv -u mariadb -u nginx`.
+
+Em falha de certificado, ajuste DNS/firewall e execute apenas:
+
+```bash
+certbot --nginx --non-interactive --agree-tos --redirect \
+  --email admin@exemplo.com.br -d tv.exemplo.com.br
+certbot renew --dry-run
 ```
 
-Não execute `npm ci` como root em código não revisado. O instalador desativa scripts de dependências com `--ignore-scripts`; o sharp utiliza os binários distribuídos nos pacotes opcionais. Instale dependências com usuário temporariamente autorizado a escrever na pasta e devolva o código a root antes de iniciar o serviço. Atualize também Node.js 24 e os pacotes Debian regularmente.
+Se o certificado falhar, o modo HTTPS mantém cookies seguros; não use login
+por HTTP como substituição. Depois de corrigir TLS, execute `systvctl doctor`
+e confira a URL HTTPS no navegador.
 
-Se a instalação for interrompida, os recursos já criados permanecem para diagnóstico; não rode novamente apagando arquivos ou bancos sem conferi-los. Veja `journalctl -u systv`, `nginx -t` e a linha informada pelo instalador. Em falha de emissão do certificado, corrija DNS/firewall e execute novamente apenas o comando Certbot; não reinstale o banco. O modo HTTPS mantém cookies seguros desde o início.
+Mantenha os pacotes Debian e o runtime Node.js 24 atualizados. O runtime é
+isolado e não é substituído pela atualização do código: atualizações de Node
+requerem manutenção separada, teste e reinício do serviço.
 
-## Verificação
-
-A CI verifica sintaxe JavaScript e Bash, ShellCheck e testes da aplicação com MariaDB. A instalação completa, inicialização após reboot, acesso por TVs físicas e emissão de certificado precisam ser homologados em uma VM Debian 13 antes de uso em produção.
-
-Referências: [pacote MariaDB no Debian 13](https://packages.debian.org/trixie/mariadb-server), [distribuição oficial Node.js 24](https://nodejs.org/dist/latest-v24.x/).
+A CI testa o provisionamento com systemd dentro de Debian 13 descartável,
+incluindo autenticação, permissões, backup, atualização, rollback e reinício
+dos serviços. Isso não substitui homologação de DNS/HTTPS, firewall, reboot do
+servidor e funcionamento das TVs físicas no ambiente final.

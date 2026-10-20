@@ -9,3 +9,8 @@ backups/
 .idea/
 *.log
 *.sql.gz
+
+# Somente o ambiente local utiliza DDEV.
+.ddev/
+dist/
+__pycache__/

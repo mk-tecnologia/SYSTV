@@ -1,0 +1,16 @@
+name: Pacote de produção
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - run: python3 tests/release.test.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: systv-production
+          path: dist/
+          if-no-files-found: error

@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+umask 077
+fail() { echo "Erro: $*" >&2; exit 1; }
+[[ $EUID == 0 ]] || fail 'Execute como root.'
+COMMAND=${1:-help}
+[[ $# == 0 ]] || shift
+case "$COMMAND" in
+  version)
+    cat /opt/systv/current/VERSION
+    /opt/systv/node/bin/node --version ;;
+  doctor)
+    cat /etc/os-release
+    printf '\nRelease: %s\n' "$(readlink -f /opt/systv/current)"
+    [[ -r /etc/systv/systv.env ]]
+    systemctl is-active systv mariadb nginx systv-backup.timer
+    nginx -t
+    curl --fail --silent --show-error http://127.0.0.1:3000/api/health
+    printf '\n'
+    systemctl list-timers systv-backup.timer ;;
+  backup)
+    # Compartilha o mesmo lock entre execuções manuais e agendadas.
+    exec 8>/run/lock/systv-backup.lock
+    flock -n 8 || fail 'Outro backup está em andamento.'
+    install -d -m 0700 /var/backups/systv
+    WORK=$(mktemp -d /var/backups/systv/.pending-XXXXXX)
+    trap 'rm -rf -- "$WORK"' EXIT
+    mariadb-dump --single-transaction --routines --triggers systv | gzip > "$WORK/database.sql.gz"
+    tar -czf "$WORK/config.tar.gz" -C /etc systv
+    cp /opt/systv/current/VERSION "$WORK/VERSION"
+    (cd "$WORK"; sha256sum database.sql.gz config.tar.gz VERSION > SHA256SUMS)
+    DEST=/var/backups/systv/$(date -u +%Y%m%dT%H%M%SZ)-$$
+    mv "$WORK" "$DEST"
+    printf 'Backup: %s\n' "$DEST"
+    # Somente o agendamento remove backups antigos, após um backup bem-sucedido.
+    if [[ ${1:-} == --scheduled ]]; then
+      find /var/backups/systv -mindepth 1 -maxdepth 1 -type d -name '20*T*Z-*' -mtime +14 -exec rm -rf -- {} +
+    fi ;;
+  update)
+    # Reutiliza o bootstrap da release ativa, nunca baixa a branch main.
+    exec bash /opt/systv/current/install.sh --update "$@" ;;
+  rollback)
+    [[ $# -le 1 ]] || fail 'Use systvctl rollback [nome-da-release].'
+    exec 9>/run/lock/systv-deploy.lock
+    flock -n 9 || fail 'Outra manutenção está em andamento.'
+    if [[ $# == 1 ]]; then
+      [[ $1 =~ ^v[0-9]+\.[0-9]+\.[0-9]+-[0-9]+T[0-9]+Z-[0-9]+$ ]] || fail 'Nome de release inválido.'
+      TARGET=/opt/systv/releases/$1
+    else
+      [[ -f /etc/systv/previous-release ]] || fail 'Nenhuma release anterior registrada.'
+      TARGET=$(cat /etc/systv/previous-release)
+    fi
+    [[ $TARGET == /opt/systv/releases/* && -f $TARGET/server.js && ! -L $TARGET ]] || fail 'Release inválida.'
+    OLD=$(readlink -f /opt/systv/current)
+    [[ $TARGET != "$OLD" ]] || fail 'Essa release já está ativa.'
+    restore() {
+      trap - ERR
+      ln -s "$OLD" /opt/systv/.rollback-recovery-$$
+      mv -Tf /opt/systv/.rollback-recovery-$$ /opt/systv/current
+      systemctl restart systv || true
+      echo 'Rollback falhou; código anterior reativado. Confira o banco e o backup.' >&2
+      exit 1
+    }
+    trap restore ERR
+    systemctl stop systv
+    /usr/local/sbin/systvctl backup
+    ln -s "$TARGET" /opt/systv/.rollback-$$
+    mv -Tf /opt/systv/.rollback-$$ /opt/systv/current
+    systemctl restart systv
+    for _attempt in {1..30}; do
+      if curl --fail --silent http://127.0.0.1:3000/api/health >/dev/null; then break; fi
+      sleep 1
+    done
+    systemctl is-active --quiet systv
+    curl --fail --silent --show-error http://127.0.0.1:3000/api/health
+    printf '%s\n' "$OLD" > /etc/systv/previous-release
+    echo 'Código revertido. Migrações do banco não foram desfeitas.' ;;
+  help|--help|-h)
+    echo 'Uso: systvctl {version|doctor|backup|update [--version vX.Y.Z]|rollback [release]}' ;;
+  *) fail "Comando desconhecido: $COMMAND" ;;
+esac

@@ -1,0 +1,12 @@
+[Unit]
+Description=Backup de produção SYSTV
+After=mariadb.service
+Requires=mariadb.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/systvctl backup --scheduled
+User=root
+UMask=0077
+PrivateTmp=true
+ProtectHome=true
