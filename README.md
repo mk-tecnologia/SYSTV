@@ -15,7 +15,7 @@ curl -fsSL https://github.com/mk-tecnologia/systv/releases/latest/download/insta
 bash /tmp/systv-install.sh
 ```
 
-O assistente pede a URL de acesso e baixa a última release estável, verificando
+O assistente pede hostname, domínio local, fuso e URL de acesso, e baixa a última release estável, verificando
 o SHA-256. Na intranet, por exemplo:
 
 ```bash
@@ -30,7 +30,15 @@ dela. Veja as opções de certificado abaixo.
 
 A instalação configura Node.js 24, MariaDB, Nginx, serviço systemd, ativação do
 primeiro administrador por link, backups diários e releases com atualização/rollback.
-O catálogo começa vazio, com uma TV.
+O catálogo começa vazio, com uma TV. O servidor recebe identificação da MK Tecnologia
+no console, com sistema, kernel, hostname, IP e endereço do painel. A autodetecção
+SSH por AF_VSOCK é desativada; o acesso SSH normal é preservado.
+
+Para configurar o perfil em uma instalação atualizada:
+
+```bash
+systvctl server --hostname srv-systv --domain mk.intranet --timezone America/Sao_Paulo
+```
 
 ## Corrigir uma instalação interrompida no Certbot
 

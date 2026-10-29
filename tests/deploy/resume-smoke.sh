@@ -4,7 +4,7 @@ set -Eeuo pipefail
 cd /var/tmp/systv-source
 cp package-lock.json /var/tmp/systv-original-lock.json
 printf '{invalid-json\n' > package-lock.json
-if bash deploy/debian/install.sh --origin https://127.0.0.1; then
+if bash deploy/debian/install.sh --origin https://127.0.0.1 --hostname srv-systv --domain mk.intranet --timezone America/Sao_Paulo; then
   echo 'Instalação com lockfile inválido foi aceita.' >&2; exit 1
 fi
 [[ -f /etc/systv/install-pending.json ]]
@@ -22,6 +22,8 @@ cp /var/tmp/systv-original-lock.json package-lock.json
 bash deploy/debian/install.sh --resume
 [[ $(env_digest) == "$ENV_HASH" ]]
 [[ ! -e /etc/systv/install-pending.json ]]
+[[ $(hostnamectl --static) == srv-systv ]]
+grep -q "srv-systv.mk.intranet" /etc/issue
 systvctl doctor
 # Falha tardia de migração em atualização deve restaurar código e runtime anteriores.
 OLD=$(readlink -f /opt/systv/current)
@@ -40,5 +42,6 @@ if bash deploy/debian/install.sh --update; then
   echo 'Migração inválida foi aceita.' >&2; exit 1
 fi
 [[ $(readlink -f /opt/systv/current) == "$OLD" ]]
+grep -q "SYSTV $(cat "$OLD/VERSION") =>" /etc/issue
 systvctl doctor
 echo 'Retomada sem alteração de credenciais e recuperação de atualização: OK'

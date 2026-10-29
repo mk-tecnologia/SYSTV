@@ -10,6 +10,9 @@ RESUME=false
 TLS_MODE=''
 TLS_CERT=''
 TLS_KEY=''
+SERVER_HOSTNAME=''
+SERVER_DOMAIN=''
+SERVER_TIMEZONE=''
 usage() {
   cat <<'HELP'
 SYSTV — Debian 13
@@ -17,6 +20,7 @@ Uso: install.sh [--origin https://IP-ou-host --tls self-signed]
      install.sh --origin http://127.0.0.1 --tls none  # somente teste local
      install.sh --update
      install.sh --resume
+     install.sh --configure-server [--hostname srv-systv --domain mk.intranet --timezone America/Sao_Paulo]
      install.sh --configure-web [--origin URL] [--tls self-signed|none|provided|letsencrypt]
 HTTPS local é padrão; use --tls letsencrypt apenas em servidor público.
 Sem parâmetros, solicita a URL de acesso. Instala releases em /opt/systv/releases.
@@ -25,15 +29,17 @@ HELP
 fail() { echo "Erro: $*" >&2; exit 1; }
 while (($#)); do
   case "$1" in
-    --origin|--email|--tls|--tls-cert|--tls-key)
+    --origin|--email|--tls|--tls-cert|--tls-key|--hostname|--domain|--timezone)
       (($# >= 2)) || fail "Falta valor para $1"
       case $1 in
         --origin) ORIGIN=$2 ;; --email) EMAIL=$2 ;; --tls) TLS_MODE=$2 ;;
         --tls-cert) TLS_CERT=$2 ;; --tls-key) TLS_KEY=$2 ;;
+        --hostname) SERVER_HOSTNAME=$2 ;; --domain) SERVER_DOMAIN=$2 ;; --timezone) SERVER_TIMEZONE=$2 ;;
       esac
       shift 2 ;;
     --resume) RESUME=true; shift ;;
     --update) [[ $MODE == install ]] || fail "Escolha uma operação."; MODE=update; shift ;;
+    --configure-server) [[ $MODE == install ]] || fail "Escolha uma operação."; MODE=configure-server; shift ;;
     --configure-web) [[ $MODE == install ]] || fail "Escolha uma operação."; MODE=configure-web; shift ;;
     -h|--help) usage; exit 0 ;;
     *) fail "Opção desconhecida: $1" ;;
@@ -47,6 +53,14 @@ source /etc/os-release
 [[ -f $SOURCE/VERSION && -f $SOURCE/package-lock.json ]] || fail 'Pacote incompleto.'
 VERSION=$(cat "$SOURCE/VERSION")
 [[ $VERSION =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || fail 'Versão inválida.'
+if [[ $MODE == configure-server ]]; then
+  SERVER_ARGS=()
+  [[ -z $ORIGIN ]] || SERVER_ARGS+=(--origin "$ORIGIN")
+  [[ -z $SERVER_HOSTNAME ]] || SERVER_ARGS+=(--hostname "$SERVER_HOSTNAME")
+  [[ -z $SERVER_DOMAIN ]] || SERVER_ARGS+=(--domain "$SERVER_DOMAIN")
+  [[ -z $SERVER_TIMEZONE ]] || SERVER_ARGS+=(--timezone "$SERVER_TIMEZONE")
+  exec bash "$SOURCE/deploy/debian/configure-server.sh" "${SERVER_ARGS[@]}"
+fi
 if [[ $MODE == configure-web ]]; then
   WEB_ARGS=()
   [[ -z $ORIGIN ]] || WEB_ARGS+=(--origin "$ORIGIN")
@@ -63,19 +77,20 @@ if [[ $RESUME == true ]]; then
   [[ $MODE == install ]] || fail '--resume só retoma instalação inicial.'
   [[ -f /etc/systv/install-pending.json && ! -L /etc/systv/install-pending.json && -f /etc/systv/systv.env ]] || fail 'Nenhuma instalação pendente encontrada.'
   [[ $(stat -c '%u:%a' /etc/systv/install-pending.json) == 0:600 ]] || fail 'Estado de instalação inseguro.'
-  [[ -z $ORIGIN && -z $EMAIL && -z $TLS_MODE && -z $TLS_CERT && -z $TLS_KEY ]] || fail '--resume reutiliza os parâmetros originais.'
+  [[ -z $ORIGIN && -z $EMAIL && -z $TLS_MODE && -z $TLS_CERT && -z $TLS_KEY && -z $SERVER_HOSTNAME && -z $SERVER_DOMAIN && -z $SERVER_TIMEZONE ]] || fail '--resume reutiliza os parâmetros originais.'
   mapfile -t PENDING < <(python3 - <<'STATE'
 import json
 from pathlib import Path
 state=json.loads(Path('/etc/systv/install-pending.json').read_text())
-for key in ['origin','tls','cert','key','email']:
-    value=state[key]
+for key in ['origin','tls','cert','key','email','hostname','domain','timezone']:
+    value=state.get(key, '')
     if not isinstance(value,str) or '\n' in value or '\r' in value: raise SystemExit('Estado inválido')
     print(value)
 STATE
 )
-  [[ ${#PENDING[@]} == 5 ]] || fail 'Estado inválido.'
+  [[ ${#PENDING[@]} == 8 ]] || fail 'Estado inválido.'
   ORIGIN=${PENDING[0]} TLS_MODE=${PENDING[1]} TLS_CERT=${PENDING[2]} TLS_KEY=${PENDING[3]} EMAIL=${PENDING[4]}
+  SERVER_HOSTNAME=${PENDING[5]} SERVER_DOMAIN=${PENDING[6]} SERVER_TIMEZONE=${PENDING[7]}
 fi
 if [[ $MODE == install ]]; then
   if [[ $RESUME == false ]]; then
@@ -87,7 +102,16 @@ if [[ $MODE == install ]]; then
   fi
   if [[ -z $ORIGIN ]]; then
     [[ -t 0 || -r /dev/tty ]] || fail 'Informe --origin para instalação sem terminal.'
-    read -r -p 'URL de acesso (ex.: https://tv.exemplo.com ou https://192.168.1.10): ' ORIGIN < /dev/tty
+    read -r -p "Nome do servidor [${SERVER_HOSTNAME:-srv-systv}]: " ANSWER < /dev/tty
+    SERVER_HOSTNAME=${ANSWER:-${SERVER_HOSTNAME:-srv-systv}}
+    SERVER_HOSTNAME=${SERVER_HOSTNAME,,}
+    read -r -p "Domínio local [${SERVER_DOMAIN:-mk.intranet}]: " ANSWER < /dev/tty
+    SERVER_DOMAIN=${ANSWER:-${SERVER_DOMAIN:-mk.intranet}}
+    SERVER_DOMAIN=${SERVER_DOMAIN,,}
+    read -r -p "Fuso horário [${SERVER_TIMEZONE:-America/Sao_Paulo}]: " ANSWER < /dev/tty
+    SERVER_TIMEZONE=${ANSWER:-${SERVER_TIMEZONE:-America/Sao_Paulo}}
+    read -r -p "URL de acesso [https://$SERVER_HOSTNAME.$SERVER_DOMAIN]: " ORIGIN < /dev/tty
+    ORIGIN=${ORIGIN:-https://$SERVER_HOSTNAME.$SERVER_DOMAIN}
   fi
   # HTTPS sem modo explícito é local; Certbot só é usado por opção explícita.
   if [[ $TLS_MODE == letsencrypt && -z $EMAIL ]]; then
@@ -99,6 +123,13 @@ if [[ $MODE == install ]]; then
 else
   [[ -L /opt/systv/current && -f /etc/systv/systv.env ]] || fail 'Instalação por releases não encontrada.'
   [[ -z $ORIGIN && -z $EMAIL && -z $TLS_MODE && -z $TLS_CERT && -z $TLS_KEY ]] || fail 'Atualização preserva a URL e configuração existentes.'
+fi
+VALIDATE_ARGS=(--validate)
+[[ -z $SERVER_HOSTNAME ]] || VALIDATE_ARGS+=(--hostname "$SERVER_HOSTNAME")
+[[ -z $SERVER_DOMAIN ]] || VALIDATE_ARGS+=(--domain "$SERVER_DOMAIN")
+[[ -z $SERVER_TIMEZONE ]] || VALIDATE_ARGS+=(--timezone "$SERVER_TIMEZONE")
+if command -v python3 >/dev/null && [[ -f /usr/share/zoneinfo/America/Sao_Paulo ]]; then
+  python3 "$SOURCE/deploy/debian/configure-server.py" "${VALIDATE_ARGS[@]}"
 fi
 case "$(dpkg --print-architecture)" in
   amd64) NODE_ARCH=x64 ;;
@@ -140,6 +171,9 @@ on_error() {
       echo 'A recuperação não respondeu à verificação de saúde; consulte journalctl -u systv.' >&2
     fi
   fi
+  if [[ -n $OLD_RELEASE && -f /etc/systv/server-profile.json ]]; then
+    python3 "$SOURCE/deploy/debian/configure-server.py" --refresh || true
+  fi
   if [[ $MODE == install && -f /etc/systv/install-pending.json ]]; then
     echo 'Instalação pendente preservada. Retome com o mesmo pacote: bash deploy/debian/install.sh --resume' >&2
   fi
@@ -150,7 +184,8 @@ trap 'on_error "$LINENO"' ERR
 export DEBIAN_FRONTEND=noninteractive
 if [[ $MODE == install ]]; then
   apt-get update
-  apt-get install -y ca-certificates curl xz-utils openssl mariadb-server nginx rsync python3
+  apt-get install -y ca-certificates curl xz-utils openssl mariadb-server nginx rsync python3 tzdata iproute2 procps
+  python3 "$SOURCE/deploy/debian/configure-server.py" "${VALIDATE_ARGS[@]}"
   systemctl enable --now mariadb
   if [[ $RESUME == false ]]; then
   [[ $(mariadb --batch --skip-column-names -e "SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME='systv'") == 0 ]] || fail 'Banco systv já existe; preservado.'
@@ -176,11 +211,13 @@ DB_POOL_SIZE=10
 MAIL_ENCRYPTION_KEY=$MAIL_KEY
 ENV
   chmod 0600 "$INITIAL_CONFIG/systv.env"
-  python3 - "$ORIGIN" "$TLS_MODE" "$TLS_CERT" "$TLS_KEY" "$EMAIL" "$INITIAL_CONFIG" <<'STATE'
+  python3 - "$ORIGIN" "$TLS_MODE" "$TLS_CERT" "$TLS_KEY" "$EMAIL" "$INITIAL_CONFIG" "$SERVER_HOSTNAME" "$SERVER_DOMAIN" "$SERVER_TIMEZONE" <<'STATE'
 import json, os, sys
 from pathlib import Path
 path=Path(sys.argv[6]) / 'install-pending.json'
-path.write_text(json.dumps(dict(zip(['origin','tls','cert','key','email'],sys.argv[1:6]))))
+state=dict(zip(['origin','tls','cert','key','email'],sys.argv[1:6]))
+state.update(zip(['hostname','domain','timezone'],sys.argv[7:10]))
+path.write_text(json.dumps(state))
 os.chmod(path,0o600)
 STATE
   mv -T "$INITIAL_CONFIG" /etc/systv
@@ -220,6 +257,13 @@ else
   OLD_RELEASE=$(readlink -f /opt/systv/current)
   [[ $(cat "$OLD_RELEASE/VERSION") != "$VERSION" ]] || fail "A versão $VERSION já está ativa."
 fi
+# Mesmo perfil local nas instalações e atualizações; não altera SSH TCP ou a rede.
+SERVER_ARGS=()
+[[ $MODE != install ]] || SERVER_ARGS+=(--initial --origin "$ORIGIN")
+[[ -z $SERVER_HOSTNAME ]] || SERVER_ARGS+=(--hostname "$SERVER_HOSTNAME")
+[[ -z $SERVER_DOMAIN ]] || SERVER_ARGS+=(--domain "$SERVER_DOMAIN")
+[[ -z $SERVER_TIMEZONE ]] || SERVER_ARGS+=(--timezone "$SERVER_TIMEZONE")
+SYSTV_DEPLOY_LOCK_HELD=1 bash "$SOURCE/deploy/debian/configure-server.sh" "${SERVER_ARGS[@]}"
 # O runtime pertence à release: atualização e rollback incluem a versão do Node.
 curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' https://nodejs.org/dist/latest-v24.x/SHASUMS256.txt -o "$WORK/SHASUMS256.txt"
 NODE_FILE=$(awk -v arch="$NODE_ARCH" '$2 ~ ("^node-v24\\.[0-9]+\\.[0-9]+-linux-" arch "\\.tar\\.xz$") {print $2}' "$WORK/SHASUMS256.txt")
@@ -307,6 +351,7 @@ done
 systemctl is-active --quiet systv
 curl --fail --silent --show-error http://127.0.0.1:3000/api/health > /dev/null
 
+python3 "$SOURCE/deploy/debian/configure-server.py" --refresh
 if [[ -n $OLD_RELEASE ]]; then
   printf '%s\n' "$OLD_RELEASE" > /etc/systv/previous-release
 fi
