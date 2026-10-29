@@ -23,6 +23,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci --ignore-scripts
+      - run: npm audit --omit=dev --audit-level=moderate
       - run: npm run check
       - run: bash -n install.sh deploy/debian/*.sh deploy/debian/systvctl tests/deploy/*.sh
       - run: shellcheck install.sh deploy/debian/*.sh deploy/debian/systvctl tests/deploy/*.sh
@@ -61,6 +62,9 @@ jobs:
           docker exec systv-debian tar -xzf /var/tmp/systv.tar.gz -C /var/tmp/systv-source
           docker cp tests/deploy/smoke.sh systv-debian:/var/tmp/smoke.sh
           docker cp tests/deploy/web-smoke.sh systv-debian:/var/tmp/web-smoke.sh
+          docker cp tests/deploy/security-smoke.sh systv-debian:/var/tmp/security-smoke.sh
+          docker cp tests/deploy/resume-smoke.sh systv-debian:/var/tmp/resume-smoke.sh
+          docker cp tests/deploy/legacy-runtime-smoke.sh systv-debian:/var/tmp/legacy-runtime-smoke.sh
       - name: Testar download e instalação da release publicada
         if: github.event_name == 'workflow_dispatch'
         run: |
@@ -70,9 +74,18 @@ jobs:
           docker cp /tmp/systv-bootstrap/install.sh systv-debian:/var/tmp/bootstrap.sh
           docker exec systv-debian bash /var/tmp/bootstrap.sh \
             --version "v$(cat VERSION)" --origin "${{ matrix.transport }}://127.0.0.1"
+      - name: Falhar e retomar a primeira instalação
+        if: github.event_name != 'workflow_dispatch' && matrix.transport == 'https'
+        run: |
+          docker exec systv-debian bash /var/tmp/resume-smoke.sh
+          docker exec systv-debian rm -rf /var/tmp/systv-source
+          docker exec systv-debian mkdir /var/tmp/systv-source
+          docker exec systv-debian tar -xzf /var/tmp/systv.tar.gz -C /var/tmp/systv-source
       - name: Instalar, autenticar, atualizar, reverter e reiniciar
         run: |
           docker exec -e SYSTV_TEST_TRANSPORT=${{ matrix.transport }} systv-debian bash /var/tmp/smoke.sh
+          docker exec systv-debian bash /var/tmp/security-smoke.sh
+          docker exec systv-debian bash /var/tmp/legacy-runtime-smoke.sh
       - name: Diagnóstico em falha
         if: failure()
         run: |

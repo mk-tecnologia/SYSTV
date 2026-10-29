@@ -1,17 +1,40 @@
 import { getTVPalette } from './tv-palettes.js';
 const $ = id => document.getElementById(id);
-const device = crypto.randomUUID();
+const screen = new URLSearchParams(location.search).get('screen') || 'tv01';
+const storageKey = 'systv-device:' + screen;
+let credential;
+try { credential = JSON.parse(localStorage.getItem(storageKey)); } catch {}
+const device = credential?.device || crypto.randomUUID();
+let token = credential?.token, enrolling = false;
+async function enrollPresence() {
+  if (enrolling || token) return;
+  enrolling = true;
+  try {
+    const response = await fetch('/api/screens/' + encodeURIComponent(screen) + '/devices', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ device }), signal: AbortSignal.timeout(8000),
+    });
+    if (!response.ok) return;
+    token = (await response.json()).token;
+    try { localStorage.setItem(storageKey, JSON.stringify({ device, token })); } catch {}
+  } catch {} finally { enrolling = false; }
+}
 let presenceTimer, presenceRequest;
 function reportPresence(disconnected = false) {
   const url = '/api/screens/' + encodeURIComponent(screen) + '/heartbeat';
-  const body = JSON.stringify({ device, disconnected });
+  if (!token) return;
+  const body = JSON.stringify({ device, token, disconnected });
   if (disconnected) { navigator.sendBeacon(url, new Blob([body], { type: 'application/json' })); return; }
   if (!state?.screens.some(item => item.id === screen) || presenceRequest) return;
   presenceRequest = fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: AbortSignal.timeout(8000) })
-    .catch(() => {}).finally(() => { presenceRequest = null; });
+    .then(response => {
+      if (response.status === 401) { token = null; try { localStorage.removeItem(storageKey); } catch {} }
+    }).catch(() => {}).finally(() => { presenceRequest = null; });
 }
-function startPresence() { clearInterval(presenceTimer); reportPresence(); presenceTimer = setInterval(reportPresence, 15000); }
-const screen = new URLSearchParams(location.search).get('screen') || 'tv01';
+function startPresence() {
+  clearInterval(presenceTimer);
+  const report = async () => { await enrollPresence(); reportPresence(); };
+  report(); presenceTimer = setInterval(report, 15000);
+}
 let state, page = 0, fitFrame, rotationTimer, rotationKey = '', connectionStatus;
 
 function columns() { return window.innerWidth < 900 ? 1 : 2; }

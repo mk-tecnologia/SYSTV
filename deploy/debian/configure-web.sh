@@ -100,6 +100,10 @@ case $TLS_MODE in
 esac
 # Snapshot privado antes de alterar qualquer arquivo da instalação.
 SNAPSHOT_FILES=(etc/systv)
+HAD_LIMITS=false
+if [[ -f /etc/nginx/conf.d/systv-limits.conf ]]; then
+  HAD_LIMITS=true; SNAPSHOT_FILES+=(etc/nginx/conf.d/systv-limits.conf)
+fi
 [[ ! -f /etc/nginx/sites-available/systv ]] || SNAPSHOT_FILES+=(etc/nginx/sites-available/systv)
 install -d -m 0700 /var/backups/systv
 SNAPSHOT=/var/backups/systv/web-$(date -u +%Y%m%dT%H%M%SZ)-$$.tar.gz
@@ -112,6 +116,7 @@ rollback() {
   local status=$?
   trap - ERR
   tar -xzf "$SNAPSHOT" -C / || true
+  if [[ $HAD_LIMITS == false ]]; then rm -f /etc/nginx/conf.d/systv-limits.conf; fi
   if [[ $HAD_SITE == false ]]; then rm -f /etc/nginx/sites-available/systv; fi
   if [[ $HAD_LINK == false ]]; then rm -f /etc/nginx/sites-enabled/systv; fi
   if nginx -t; then systemctl reload nginx || true; fi
@@ -213,6 +218,7 @@ if [[ ! -L /etc/nginx/sites-enabled/systv ]]; then
   [[ ! -e /etc/nginx/sites-enabled/systv ]] || { echo 'Arquivo conflitante em sites-enabled.' >&2; false; }
   ln -s /etc/nginx/sites-available/systv /etc/nginx/sites-enabled/systv
 fi
+python3 "$SCRIPT_DIR/harden-web.py"
 nginx -t
 systemctl enable --now nginx
 systemctl reload nginx

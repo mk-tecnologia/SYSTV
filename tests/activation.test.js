@@ -18,7 +18,7 @@ test('primeiro acesso por link: emissão local, expiração, concorrência e fec
   const admin = await mysql.createConnection({host: options.host, port: options.port, user: options.user, password: options.password});
   let db, app, base;
   const origin = 'https://systv.example';
-  const appConfig = { ...config, production: true, password: undefined, origin, secureCookie: false, mailEncryptionKey: 'a'.repeat(64) };
+  const appConfig = { ...config, production: true, password: undefined, origin, secureCookie: true, mailEncryptionKey: 'a'.repeat(64) };
   const fields = { name: 'Responsável', username: 'lojista', password: 'activation-test-password', email: 'loja@example.com' };
   async function start() {
     app = await createApp(db, appConfig);
@@ -97,7 +97,7 @@ test('migração preserva administrador, senha e sessão de instalação existen
   let db, app, base;
   const origin = 'https://systv.example';
   async function start(production) {
-    app = await createApp(db, { ...config, production, password: production ? 'ignored-new-password' : 'legacy-test-password', origin, secureCookie: false, mailEncryptionKey: 'a'.repeat(64) });
+    app = await createApp(db, { ...config, production, password: production ? 'ignored-new-password' : 'legacy-test-password', origin, secureCookie: true, mailEncryptionKey: 'a'.repeat(64) });
     await new Promise(resolve => app.server.listen(0, '127.0.0.1', resolve));
     base = `http://127.0.0.1:${app.server.address().port}`;
   }

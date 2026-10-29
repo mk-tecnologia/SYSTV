@@ -33,7 +33,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (path === '/preview/mobile' || path === '/preview/tablet') {
       const width = path.endsWith('mobile') ? 390 : 768;
-      res.writeHead(200, { 'Content-Type': 'text/html' });
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prévia ${width}px</title><style>body{margin:0;background:#72838b;display:flex;justify-content:center}iframe{width:${width}px;max-width:100%;height:1050px;border:0;background:#fff}</style><iframe src="${url.searchParams.get('page') === 'activate' ? '/activate#token=' + '0'.repeat(64) : url.searchParams.get('page') === 'tv' ? '/tv?screen=tv01' : '/admin'}" title="SYSTV em ${width}px"></iframe>`);
     }
     if (path === '/api/events') {
@@ -43,7 +43,7 @@ const server = http.createServer(async (req, res) => {
     if (path === '/api/state') return json(res, state);
     if (path === '/api/session') return json(res, { authenticated: !req.headers.cookie?.includes('layout-logged=no'), user: req.headers.cookie?.includes('layout-logged=no') ? null : user });
     if (path === '/api/users') return json(res, users);
-    if (path === '/api/version') return json(res, { current: '2.5.0', latest: '2.5.1', status: 'checked', checked_at: new Date().toISOString(), update_available: true, release_url: 'https://github.com/mk-tecnologia/systv/releases' });
+    if (path === '/api/version') return json(res, { current: '2.6.0', latest: '2.6.1', status: 'checked', checked_at: new Date().toISOString(), update_available: true, release_url: 'https://github.com/mk-tecnologia/systv/releases' });
     if (path === '/api/screens/status') return json(res, state.screens.map((s, i) => ({ id: s.id, online: i === 0 })));
     if (path === '/api/account') return json(res, { ...user, mail_ready: true });
     if (path === '/api/mail-settings') return json(res, mail);

@@ -65,10 +65,9 @@ fi
 rm /etc/nginx/conf.d/systv-test-invalid.conf
 [[ $(sha256sum /etc/systv/systv.env) == "$ENV_HASH" ]]
 [[ $(sha256sum /etc/nginx/sites-available/systv) == "$NGINX_HASH" ]]
-systvctl web --origin http://tv.empresa.intranet --tls none
-SHORT_HEADERS=$(curl --silent --show-error --noproxy '*' -D - -o /dev/null \
-  -H 'Host: tv' 'http://127.0.0.1/tv?screen=tv01')
-printf '%s' "$SHORT_HEADERS" | grep -qi 'Location: http://tv.empresa.intranet/tv?screen=tv01'
+if systvctl web --origin http://tv.empresa.intranet --tls none; then
+  echo 'HTTP de rede foi aceito.' >&2; exit 1
+fi
 systvctl web --origin http://127.0.0.1 --tls none
 [[ $(credentials_digest) == "$ORIGINAL_SECRETS" ]]
 grep -q '^COOKIE_SECURE=false$' /etc/systv/systv.env

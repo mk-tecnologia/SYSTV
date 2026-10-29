@@ -51,7 +51,7 @@ Depois, `systvctl update` instala a versão mais nova do código e das ferrament
 |---|---|---|
 | HTTPS local | Intranet sem CA; exige configurar confiança nos clientes | `--origin https://tv.empresa.intranet --tls self-signed` |
 | HTTPS com CA da empresa | Intranet com certificados corporativos | `--origin https://tv.empresa.intranet --tls provided --tls-cert /root/fullchain.pem --tls-key /root/server.key` |
-| HTTP | Rede local em que se aceita tráfego sem criptografia | `--origin http://tv.empresa.intranet --tls none` |
+| HTTP local | Somente testes em loopback | `--origin http://127.0.0.1 --tls none` |
 | Let's Encrypt HTTP-01 | Domínio público com porta 80 acessível externamente | `--origin https://tv.exemplo.com.br --tls letsencrypt --email admin@exemplo.com.br` |
 
 Let’s Encrypt não emite para nomes `.intranet`, `.local` ou outros nomes
@@ -63,7 +63,7 @@ Na versão atual, altere a configuração existente usando as mesmas opções:
 
 ```bash
 systvctl web --tls self-signed
-systvctl web --origin http://tv.empresa.intranet --tls none
+systvctl web --origin https://tv.empresa.intranet --tls self-signed
 ```
 
 O instalador não abre portas no firewall nem configura o DNS da rede.
@@ -127,3 +127,9 @@ Tags estáveis: `vX.Y.Z`. Cada release contém `install.sh`,
 dependências locais, testes, bancos, certificados, backups e `.env`.
 A CI executa Gitleaks em todo o histórico e testa a aplicação e o instalador
 em Debian 13 descartável com systemd real, tanto por HTTP quanto por HTTPS local.
+
+## Segurança na versão 2.6.0
+
+Veja as [correções e o roteiro de testes](docs/security-hardening.md). O acesso de produção
+pela rede passa a exigir HTTPS. A presença online das TVs exige autorização
+inicial do navegador por uma sessão com permissão para aquela TV.

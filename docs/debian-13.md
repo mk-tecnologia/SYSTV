@@ -32,7 +32,7 @@ openssl x509 -in /etc/systv/tls/server.crt -noout -fingerprint -sha256 -enddate
 
 A instalação de confiança depende do sistema e do navegador de cada TV.
 Algumas TVs não permitem importar certificados; nesse caso, prefira uma CA
-já confiável pelo equipamento ou avalie HTTP na rede controlada. Não desative
+já confiável pelo equipamento. HTTP de rede não é aceito pelo instalador. Não desative
 a verificação de certificados globalmente nos navegadores.
 
 Executar `systvctl web --tls self-signed` preserva um certificado local válido
@@ -66,17 +66,19 @@ systvctl web --tls provided --tls-cert /root/fullchain.pem --tls-key /root/serve
 As cópias ficam em `/etc/systv/tls`; a origem não é monitorada automaticamente.
 A empresa deve renovar o certificado, copiar a nova versão e executar o comando.
 
-### HTTP na intranet
+### HTTPS obrigatório na rede
+
+O instalador e a aplicação em produção recusam HTTP para hostnames e IPs de
+rede. `http://127.0.0.1` e `http://localhost` são reservados a testes locais;
+eles não são uma origem para acesso de TVs pela rede. O proxy continua falando
+HTTP com o Node em loopback, enquanto clientes usam HTTPS.
+
+Antes de atualizar uma instalação antiga que usa HTTP, configure sua origem
+HTTPS e a confiança do certificado nos clientes:
 
 ```bash
-bash /tmp/systv-install.sh --origin http://tv.empresa.intranet --tls none
-# Em instalação existente:
-systvctl web --origin http://tv.empresa.intranet --tls none
+systvctl web --origin https://tv.empresa.intranet --tls self-signed
 ```
-
-Não exige certificados. Cookies são configurados para HTTP. Credenciais e dados
-trafegam sem criptografia; use somente quando esse risco for aceitável na rede.
-Não há troca automática de HTTPS para HTTP em caso de falha.
 
 ### Domínio público e Let's Encrypt
 
@@ -293,3 +295,43 @@ emita e entregue outro para invalidá-lo e usar a nova origem.
 ### Versão no painel
 
 O cabeçalho mostra a versão instalada e avisa quando há uma release estável mais recente no GitHub. A consulta parte do servidor para `api.github.com`, sem credenciais, com cache de cinco minutos. Em caso de falta de internet, a versão instalada continua visível e a verificação é indicada como indisponível, com nova tentativa após cinco minutos. O botão “Verificar agora” renova a consulta, com intervalo mínimo de 30 segundos entre chamadas ao GitHub. O horário da consulta aparece ao passar o mouse pelo status. O aviso abre as notas da versão; a atualização continua pelo comando `systvctl update` no servidor.
+
+## Retomar instalação inicial e atualizar runtime
+
+Nas instalações criadas pelo instalador corrigido, uma falha preserva o estado
+privado em `/etc/systv/install-pending.json`. Corrija a causa e retome com o
+mesmo pacote extraído: `bash deploy/debian/install.sh --resume`. O bootstrap
+local também encaminha `--resume`; fixe a mesma versão com `--version` quando
+ela estiver publicada. Não informe novamente origem ou certificados: os
+parâmetros e segredos originais são preservados. Falhas anteriores à criação
+desse estado não criam recursos da aplicação e permitem nova instalação normal.
+Isso não autoriza reaproveitar bancos ou diretórios de outra instalação.
+
+Cada release nova contém seu próprio Node.js 24, baixado da distribuição
+oficial com verificação SHA-256 também nas atualizações. O rollback recupera
+código e runtime juntos; a conversão preserva o runtime de releases legadas.
+O build de dependências usa `systv-build`, com UID distinto de `systv`, em serviço
+systemd isolado e sem acesso à configuração privada. Código e ferramentas de
+root nunca são graváveis pelo usuário da aplicação.
+
+## Autorizar a presença das TVs
+
+No navegador de cada TV, entre no painel com uma conta autorizada para aquela
+TV e abra o painel de exibição. Isso registra uma credencial de presença local;
+depois, saia da administração. A credencial permanece no navegador, não na URL,
+e o banco guarda somente seu hash. Ela vale por 90 dias de inatividade, com
+renovação a cada heartbeat válido; há no máximo 100 dispositivos por TV.
+
+Links antigos continuam exibindo o catálogo público, mas não podem informar
+presença online até autorizar o dispositivo. Limpar os dados do navegador exige
+nova autorização. Para revogar todos os dispositivos de uma TV:
+
+```bash
+systvctl revoke-devices tv01
+```
+
+A API autenticada também permite `DELETE /api/screens/tv01/devices`, respeitando
+as permissões da conta. A revogação não apaga a TV nem seus produtos e não fecha
+sessões administrativas. Saia das sessões que não devem autorizar novamente.
+O catálogo público permanece apropriado à exibição; restrinja a rede caso seus
+preços não devam ser consultados externamente.

@@ -1,7 +1,11 @@
-export async function createEvents(repository) {
+import { HttpError } from './http.js';
+import { clientAddress } from './security.js';
+
+export async function createEvents(repository, config = {}) {
   let current = await repository.snapshot();
   let pending = Promise.resolve();
   const clients = new Set();
+  const addresses = new Map();
   const message = () => `data: ${JSON.stringify(current)}\n\n`;
   let checking = false;
   const timer = setInterval(async () => {
@@ -15,6 +19,8 @@ export async function createEvents(repository) {
   timer.unref();
   return {
     subscribe(req, res) {
+      const address = clientAddress(req, config);
+      if (clients.size >= 500 || (addresses.get(address) || 0) >= 50) throw new HttpError(429, 'Limite de conexões atingido.');
       res.writeHead(200, {
         'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache',
         'Connection': 'keep-alive', 'X-Accel-Buffering': 'no',
@@ -22,8 +28,16 @@ export async function createEvents(repository) {
       res.write('retry: 2000\n\n');
       res.write(message());
       clients.add(res);
-      res.on('close', () => clients.delete(res));
-      res.on('error', () => clients.delete(res));
+      addresses.set(address, (addresses.get(address) || 0) + 1);
+      let released = false;
+      const release = () => {
+        if (released) return;
+        released = true; clients.delete(res);
+        const count = addresses.get(address) - 1;
+        if (count) addresses.set(address, count); else addresses.delete(address);
+      };
+      res.on('close', release);
+      res.on('error', release);
     },
     refresh() {
       const update = pending.catch(() => {}).then(async () => {

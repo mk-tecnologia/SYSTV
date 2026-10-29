@@ -2,6 +2,7 @@ import { createVersionStatus } from './version.js';
 import { createActivation, sealActivation } from './activation.js';
 import { createMailer } from './mail.js';
 import http from 'node:http';
+import { clientAddress, createRateLimit, validateDeployment } from './security.js';
 import { createPresence } from './presence.js';
 import { readFile } from 'node:fs/promises';
 import { createRepository } from './repository.js';
@@ -19,6 +20,7 @@ const files = {
 };
 
 export async function createApp(db, config, dependencies = {}) {
+  validateDeployment(config);
   await bootstrapAdmin(db, config);
   await sealActivation(db);
   const activation = createActivation(db);
@@ -29,18 +31,23 @@ export async function createApp(db, config, dependencies = {}) {
   const versionStatus = await createVersionStatus(dependencies.version);
   const logos = createLogos(db);
   const presence = createPresence(db);
-  const events = await createEvents(repository);
-  const cleanup = setInterval(() => Promise.all([auth.cleanup(), presence.cleanup()]).catch(error => console.error('Falha na limpeza de sessões:', error.code || error.message)), 60000);
+  const events = await createEvents(repository, config);
+  const publicRequests = createRateLimit();
+  const cleanup = setInterval(() => Promise.all([auth.cleanup(), presence.cleanup(), publicRequests.cleanup()]).catch(error => console.error('Falha na limpeza de sessões:', error.code || error.message)), 60000);
   cleanup.unref();
   const server = http.createServer(async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Referrer-Policy', 'same-origin');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob:; connect-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+    if (config.secureCookie) res.setHeader('Strict-Transport-Security', 'max-age=31536000');
     res.setHeader('X-Frame-Options', 'DENY');
     try {
       const url = new URL(req.url, 'http://localhost');
       const route = url.pathname;
       const method = req.method;
       if (route.startsWith('/api/')) {
+        publicRequests.check('global', 6000);
+        publicRequests.check(clientAddress(req, config), 600);
         if (!['GET', 'POST', 'PUT', 'DELETE'].includes(method)) throw new HttpError(405, 'Método não permitido.');
         if (method !== 'GET' && req.headers.origin) {
           const origin = config.origin || `http://${req.headers.host}`;
@@ -76,6 +83,12 @@ export async function createApp(db, config, dependencies = {}) {
         if (route === '/api/version' && method === 'GET') return json(res, 200, await versionStatus({ refresh: url.searchParams.get('refresh') === '1' }));
         if (route === '/api/logout' && method === 'POST') {
           await auth.logout(req, res);
+          return json(res, 200, { ok: true });
+        }
+        if (/^\/api\/screens\/[^/]+\/devices$/.test(route) && ['POST', 'DELETE'].includes(method)) {
+          const screen = route.split('/')[3];
+          if (method === 'POST') return json(res, 200, await presence.enroll(screen, await readBody(req), user));
+          await presence.revoke(screen, user);
           return json(res, 200, { ok: true });
         }
         if (route === '/api/screens/status' && method === 'GET') return json(res, 200, await presence.list(user));
