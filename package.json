@@ -21,5 +21,6 @@
     "nodemailer": "^10.3.1",
     "sharp": "^0.35.5"
   },
-  "description": "Painel de preços para múltiplas TVs com MariaDB e atualizações em tempo real"
+  "description": "Painel de preços para múltiplas TVs com MariaDB e atualizações em tempo real",
+  "license": "GPL-3.0-or-later"
 }

@@ -19,7 +19,7 @@ class ProductionRelease(unittest.TestCase):
         archive_path = ROOT / 'dist' / f'systv-v{(ROOT / "VERSION").read_text().strip()}.tar.gz'
         with tarfile.open(archive_path) as archive:
             paths = set(archive.getnames())
-            self.assertTrue({'VERSION', 'install.sh', 'server.js', 'scripts/setup-production.js',
+            self.assertTrue({'LICENSE', 'README.md', 'VERSION', 'install.sh', 'server.js', 'scripts/setup-production.js',
                              'deploy/debian/systv.service', 'deploy/debian/systvctl',
                              'deploy/debian/configure-server.sh', 'deploy/debian/configure-server.py',
                              'deploy/debian/console-logo.txt', 'deploy/debian/prepare-debian.sh', 'public/activate.html',
@@ -29,6 +29,7 @@ class ProductionRelease(unittest.TestCase):
                 self.assertFalse({'.ddev', '.git', '.idea', 'data', 'backups', 'node_modules', 'tests'} & set(parts), name)
                 self.assertFalse(any(part.startswith('.env') for part in parts), name)
             self.assertTrue(all(member.isfile() for member in archive.getmembers()))
+            self.assertEqual(archive.extractfile('LICENSE').read(), (ROOT/'LICENSE').read_bytes())
         for line in (ROOT / 'dist/SHA256SUMS').read_text().splitlines():
             checksum, filename = line.split()
             self.assertEqual(checksum, hashlib.sha256((ROOT / 'dist' / filename).read_bytes()).hexdigest())

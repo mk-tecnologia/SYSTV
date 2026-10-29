@@ -16,7 +16,7 @@ assert json.loads((ROOT / 'package-lock.json').read_text())['version'] == versio
 out = ROOT / 'dist'
 out.mkdir(exist_ok=True)
 name = f'systv-v{version}.tar.gz'
-paths = [ROOT / path for path in ['VERSION', 'package.json', 'package-lock.json', 'server.js', 'install.sh']]
+paths = [ROOT / path for path in ['LICENSE', 'README.md', 'VERSION', 'package.json', 'package-lock.json', 'server.js', 'install.sh']]
 for folder in ['src', 'public', 'database', 'scripts', 'deploy/debian']:
     paths.extend(p for p in (ROOT / folder).rglob('*') if p.is_file())
 # Apenas scripts de runtime/deploy entram no pacote.

@@ -4,7 +4,7 @@
 
 O SYSTV centraliza a gestão de produtos, preços e identidade visual de estabelecimentos comerciais. A administração é feita pelo navegador, com permissões por usuário e por TV. As alterações são transmitidas às telas em tempo real, sem recarregamento manual.
 
-[Instalação](#instalação) · [Operação](#operação) · [Documentação](#documentação) · [Releases](https://github.com/mk-tecnologia/SYSTV/releases) · [Histórico de versões](CHANGELOG.md)
+[Instalação](#instalação) · [Operação](#operação) · [Documentação](#documentação) · [Releases](https://github.com/mk-tecnologia/SYSTV/releases) · [Histórico de versões](CHANGELOG.md) · [Licença](#licença)
 
 ## Recursos
 
@@ -165,3 +165,11 @@ A aplicação utiliza Node.js 24, MariaDB e JavaScript no navegador. O ambiente 
 As releases seguem o formato `vX.Y.Z` e disponibilizam `install.sh`, `systv-vX.Y.Z.tar.gz` e `SHA256SUMS`. O pacote é reproduzível e exclui ambientes locais, testes, bancos de dados, certificados, backups e arquivos `.env`.
 
 A integração contínua verifica sintaxe, dependências, segredos no histórico e testes da aplicação, além de instalação, atualização, rollback e recuperação em Debian 13 com systemd, por HTTP local e HTTPS.
+
+## Licença
+
+Copyright © 2026 MK Tecnologia.
+
+O SYSTV é software livre, distribuído sob a **GNU General Public License, versão 3 ou posterior** (`GPL-3.0-or-later`). Você pode usar, estudar, modificar e redistribuir o sistema conforme os termos da licença.
+
+O software é fornecido sem garantia, conforme previsto na GPL. Consulte o texto integral em [LICENSE](LICENSE). Componentes de terceiros mantêm suas respectivas licenças.

@@ -283,7 +283,7 @@ install -d -m 0755 /opt/systv/releases
 RELEASE=/opt/systv/releases/v$VERSION-$(date -u +%Y%m%dT%H%M%SZ)-$$
 install -d -m 0755 "$RELEASE"
 rsync -r --chmod=D755,F644 "$SOURCE/src" "$SOURCE/public" "$SOURCE/database" "$SOURCE/scripts" "$RELEASE/"
-install -m 0644 "$SOURCE/package.json" "$SOURCE/package-lock.json" "$SOURCE/server.js" "$SOURCE/VERSION" "$RELEASE/"
+install -m 0644 "$SOURCE/package.json" "$SOURCE/package-lock.json" "$SOURCE/server.js" "$SOURCE/VERSION" "$SOURCE/LICENSE" "$SOURCE/README.md" "$RELEASE/"
 # Ferramentas pertencem à versão; rollback também recupera as ferramentas anteriores.
 install -d -m 0755 "$RELEASE/deploy/debian"
 rsync -r --chmod=D755,F644 "$SOURCE/deploy/debian/" "$RELEASE/deploy/debian/"
