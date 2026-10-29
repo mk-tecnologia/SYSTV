@@ -1,5 +1,20 @@
 # Histórico
 
+## 2.6.0
+
+- Corrige as cotas de autenticação atrás do Nginx, com identificação confiável do cliente e limites por IP, conta e escopo global.
+- Exige senha atual para mudar o e-mail de recuperação e protege alterações simultâneas do perfil.
+- Atualiza Nodemailer para 10.3.1 e inclui auditoria de dependências na CI.
+- Autoriza a presença das TVs por credencial vinculada ao dispositivo e à tela, com expiração, revogação e quotas.
+- Exige HTTPS para acesso de produção pela rede, cookies seguros e origem canônica; acrescenta CSP, HSTS e limites de conexões/consultas.
+- Isola o build do usuário da aplicação e mantém código e ferramentas administrativas pertencentes a root.
+- Atualiza o Node.js junto das releases e restaura o runtime no rollback, com compatibilidade para instalações antigas.
+- Permite retomar instalações iniciais interrompidas com `--resume`, preservando parâmetros e credenciais; recuperação aguarda saúde da aplicação.
+- Acrescenta retenção dos snapshots web e testes de falhas reais de npm, migração, proxy e runtime legado.
+- Valida os fluxos no MariaDB/Debian 13 e a interface no Safari em desktop, celular e tablet.
+
+**Antes de atualizar:** instalações de rede em HTTP precisam migrar para HTTPS e configurar a confiança do certificado nos clientes. Navegadores das TVs precisam ser autorizados uma vez pelo painel para informar presença online; links públicos continuam exibindo os preços.
+
 ## 2.5.0
 
 - Consolida o CSS em uma base compartilhada de cores, bordas, raios, tipografia e espaçamentos.

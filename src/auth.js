@@ -2,6 +2,7 @@ import { createHash, createHmac, randomBytes, randomInt, timingSafeEqual } from 
 import { HttpError, validText } from './http.js';
 import { verifyPassword, hashPassword, validPassword } from './passwords.js';
 import { validEmail } from './email.js';
+import { clientAddress, createRateLimit } from './security.js';
 
 const digest = token => createHash('sha256').update(token).digest('hex');
 const sessionToken = req => (req.headers.cookie || '').split(/;\s*/).find(cookie => cookie.startsWith('session='))?.slice(8);
@@ -9,14 +10,12 @@ const dummyHash = `scrypt:${'0'.repeat(32)}:${'0'.repeat(128)}`;
 const maskedEmail = email => email.replace(/^(.)(.*)(@.*)$/, '$1***$3');
 
 export function createAuth(db, config, mailer) {
-  const attempts = new Map();
+  const attempts = createRateLimit();
   const cookie = (token, maxAge) => `session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=${maxAge}${config.secureCookie ? '; Secure' : ''}`;
-  function limit(req, scope, max = 10) {
-    const address = scope + ':' + req.socket.remoteAddress, now = Date.now();
-    let history = attempts.get(address);
-    if (!history || history.until < now) history = { count: 0, until: now + 60000 };
-    attempts.set(address, history);
-    if (++history.count > max) throw new HttpError(429, 'Aguarde um minuto para tentar novamente.');
+  function limit(req, scope, max = 10, account) {
+    attempts.check(scope + ':global', 600);
+    attempts.check(scope + ':ip:' + clientAddress(req, config), max);
+    if (typeof account === 'string' && account.length <= 254) attempts.check(scope + ':account:' + digest(account.trim().toLowerCase()), max * 3);
   }
   async function session(req, res, user) {
     const token = randomBytes(32).toString('hex');
@@ -88,7 +87,7 @@ export function createAuth(db, config, mailer) {
       return { ...user, two_factor_enabled: Boolean(user.two_factor_enabled), screens: permissions.map(p => p.screen_id) };
     },
     async login(req, res, input) {
-      limit(req, 'login');
+      limit(req, 'login', 10, input.username);
       if (typeof input.username !== 'string' || !/^[a-zA-Z0-9._-]{3,64}$/.test(input.username) || typeof input.password !== 'string' || input.password.length > 128) throw new HttpError(401, 'Usuário ou senha incorretos.');
       const [user] = await db.query('SELECT * FROM users WHERE username=?', [input.username.toLowerCase()]);
       const valid = await verifyPassword(input.password, user?.password_hash || dummyHash);
@@ -108,7 +107,7 @@ export function createAuth(db, config, mailer) {
       res.setHeader('Set-Cookie', cookie(token, 43200)); return { ok: true };
     },
     async forgot(req, input) {
-      limit(req, 'forgot', 5);
+      limit(req, 'forgot', 5, input.email);
       if (!validEmail(input.email)) throw new HttpError(400, 'Informe um e-mail válido.');
       const [user] = await db.query('SELECT * FROM users WHERE email=? AND active=1', [input.email.toLowerCase().trim()]);
       if (user) { try { await issue(user, 'reset'); } catch { /* Resposta uniforme: não revela contas nem estado do SMTP. */ } }
@@ -145,13 +144,17 @@ export function createAuth(db, config, mailer) {
         ? await passwordUser(actor.id, input.current_password)
         : (await db.query('SELECT * FROM users WHERE id=? AND active=1', [actor.id]))[0];
       if (!user) throw new HttpError(401, 'Entre novamente.');
-      const email = typeof input.email === 'string' ? input.email.trim().toLowerCase() || null : null;
+      const email = input.email === undefined ? user.email : typeof input.email === 'string' ? input.email.trim().toLowerCase() || null : input.email === null ? null : false;
+      if (user.two_factor_enabled && user.email !== email) throw new HttpError(409, 'Desative o 2FA antes de alterar seu e-mail.');
+      const passwordChecked = changePassword || email !== user.email;
+      if (!changePassword && passwordChecked) await passwordUser(actor.id, input.current_password);
       if (!validText(input.name) || email !== null && !validEmail(email)) throw new HttpError(400, 'Confira o nome e o e-mail.');
       const hashed = changePassword ? await hashPassword(input.password) : null;
       await db.transaction(async c => {
         const [[current]] = await c.execute('SELECT * FROM users WHERE id=? FOR UPDATE', [user.id]);
         if (!current?.active || current.password_hash !== user.password_hash) throw new HttpError(401, 'Entre novamente.');
         if (current.two_factor_enabled && current.email !== email) throw new HttpError(409, 'Desative o 2FA antes de alterar seu e-mail.');
+        if (current.email !== email && !passwordChecked) throw new HttpError(409, 'O e-mail da conta foi alterado. Abra seu perfil novamente.');
         if (email) { const [[duplicate]] = await c.execute('SELECT id FROM users WHERE email=? AND id<>?', [email, user.id]); if (duplicate) throw new HttpError(409, 'Este e-mail já está em uso.'); }
         await c.execute('UPDATE users SET name=?,email=?,password_hash=COALESCE(?,password_hash) WHERE id=?', [input.name.trim(), email, hashed, user.id]);
         await c.execute('DELETE FROM auth_challenges WHERE user_id=?', [user.id]);
@@ -172,6 +175,6 @@ export function createAuth(db, config, mailer) {
       await db.transaction(async c => { const [[current]] = await c.execute('SELECT * FROM users WHERE id=? FOR UPDATE', [user.id]); if (!current.active || current.password_hash !== user.password_hash) throw new HttpError(401, 'Entre novamente.'); await c.execute('UPDATE users SET two_factor_enabled=0 WHERE id=?', [user.id]); await c.execute('DELETE FROM auth_challenges WHERE user_id=?', [user.id]); await c.execute('DELETE FROM sessions WHERE user_id=? AND token_hash<>?', [user.id, digest(sessionToken(req) || '')]); }); return { ok: true };
     },
     async logout(req, res) { await db.query('DELETE FROM sessions WHERE token_hash=?', [digest(sessionToken(req) || '')]); res.setHeader('Set-Cookie', cookie('', 0)); },
-    async cleanup() { await db.query('DELETE FROM sessions WHERE expires_at<=UTC_TIMESTAMP()'); await db.query('DELETE FROM auth_challenges WHERE expires_at<=UTC_TIMESTAMP()'); for (const [address, history] of attempts) if (history.until < Date.now()) attempts.delete(address); },
+    async cleanup() { await db.query('DELETE FROM sessions WHERE expires_at<=UTC_TIMESTAMP()'); await db.query('DELETE FROM auth_challenges WHERE expires_at<=UTC_TIMESTAMP()'); attempts.cleanup(); },
   };
 }

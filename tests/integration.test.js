@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { randomBytes } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import mysql from 'mysql2/promise';
 import sharp from 'sharp';
 import { config } from '../src/config.js';
@@ -58,7 +58,7 @@ test('API com MariaDB real, múltiplas TVs e sessões persistentes', { timeout: 
     await admin.query(`CREATE DATABASE ${admin.escapeId(name)} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
     db = createDatabase({ ...config.database, database: name, user: process.env.TEST_DB_USER || 'root', password: process.env.TEST_DB_PASSWORD || 'root' });
     await migrate(db); await migrate(db);
-    assert.equal((await db.query('SELECT * FROM schema_migrations')).length, 9);
+    assert.equal((await db.query('SELECT * FROM schema_migrations')).length, 10);
     assert.equal(await seed(db), true); assert.equal(await seed(db), false);
     await db.close(); db = undefined;
     await start();
@@ -119,18 +119,38 @@ test('API com MariaDB real, múltiplas TVs e sessões persistentes', { timeout: 
       assert.equal((await call('screens/status', 'GET', undefined, false)).status, 401);
       assert.equal((await status()).online, false);
       assert.equal((await call('screens/tv01/heartbeat', 'POST', { device: 'invalid' }, false)).status, 400);
-      assert.equal((await call('screens/missing/heartbeat', 'POST', { device }, false)).status, 404);
-      assert.equal((await call('screens/tv01/heartbeat', 'POST', { device }, false)).status, 200);
-      await call('screens/tv01/heartbeat', 'POST', { device: second }, false);
+      assert.equal((await call('screens/tv01/heartbeat', 'POST', { device }, false)).status, 401);
+      assert.equal((await call('screens/tv01/devices', 'POST', { device }, false)).status, 401);
+      assert.equal((await call('screens/missing/devices', 'POST', { device })).status, 404);
+      const enroll = async value => {
+        const response = await call('screens/tv01/devices', 'POST', { device: value });
+        assert.equal(response.status, 200);
+        return (await response.json()).token;
+      };
+      const token = await enroll(device), secondToken = await enroll(second);
+      assert.ok(!(await db.query('SELECT token_hash FROM screen_devices')).some(row => row.token_hash === token));
+      assert.equal((await call('screens/tv01/heartbeat', 'POST', { device, token }, false)).status, 200);
+      assert.equal((await call('screens/tv02/heartbeat', 'POST', { device, token }, false)).status, 401);
+      assert.equal((await call('screens/tv01/heartbeat', 'POST', { device: second, token }, false)).status, 401);
+      await call('screens/tv01/heartbeat', 'POST', { device: second, token: secondToken }, false);
       assert.equal((await status()).connected_devices, 2);
-      await call('screens/tv01/heartbeat', 'POST', { device, disconnected: true }, false);
+      await call('screens/tv01/heartbeat', 'POST', { device, token, disconnected: true }, false);
       assert.equal((await status()).online, true);
-      await db.query('UPDATE screen_presence SET last_seen_at = UTC_TIMESTAMP() - INTERVAL 46 SECOND');
+      await db.query('UPDATE screen_presence SET last_seen_at=UTC_TIMESTAMP() - INTERVAL 46 SECOND');
       assert.equal((await status()).online, false);
-      await call('screens/tv01/heartbeat', 'POST', { device: second }, false);
+      await call('screens/tv01/heartbeat', 'POST', { device: second, token: secondToken }, false);
       assert.equal((await status()).online, true);
-      await call('screens/tv01/heartbeat', 'POST', { device: second, disconnected: true }, false);
+      await db.query('UPDATE screen_devices SET expires_at=UTC_TIMESTAMP() - INTERVAL 1 SECOND');
       assert.equal((await status()).online, false);
+      assert.equal((await call('screens/tv01/heartbeat', 'POST', { device: second, token: secondToken }, false)).status, 401);
+      await call('screens/tv01/devices', 'DELETE');
+      assert.equal((await call('screens/tv01/heartbeat', 'POST', { device: second, token: secondToken }, false)).status, 401);
+      assert.equal((await status()).online, false);
+      const credentials = Array.from({ length: 100 }, () => [randomBytes(32).toString('hex'), randomUUID(), 'tv01']);
+      await db.query('INSERT INTO screen_devices (token_hash,device_id,screen_id,expires_at) VALUES ' + credentials.map(() => '(?,?,?,UTC_TIMESTAMP() + INTERVAL 90 DAY)').join(','), credentials.flat());
+      assert.equal((await call('screens/tv01/devices', 'POST', { device: randomUUID() })).status, 409);
+      assert.equal((await db.query('SELECT COUNT(*) AS total FROM screen_devices'))[0].total, 100);
+      await call('screens/tv01/devices', 'DELETE');
     });
 
     await t.test('validação, centavos e atualização simultânea de duas TVs', async () => {
@@ -181,6 +201,9 @@ test('API com MariaDB real, múltiplas TVs e sessões persistentes', { timeout: 
       assert.equal((await call('units/KG', 'DELETE', undefined, false, { Cookie: editorCookie })).status, 403);
       const asEditor = (route, method='GET', data) => call(route, method, data, false, { Cookie: editorCookie });
       assert.deepEqual((await (await asEditor('session')).json()).user.screens, ['tv01']);
+      assert.equal((await asEditor('screens/' + extraScreen + '/devices', 'POST', { device: '33333333-3333-4333-8333-333333333333' })).status, 403);
+      assert.equal((await asEditor('screens/' + extraScreen + '/devices', 'DELETE')).status, 403);
+      assert.equal((await asEditor('screens/tv01/devices', 'POST', { device: '33333333-3333-4333-8333-333333333333' })).status, 200);
       assert.equal((await asEditor('products', 'PUT', { ...product, id: productId, price: 5678 })).status, 200);
       assert.equal((await asEditor('products', 'POST', { ...product, screen: extraScreen })).status, 403);
       assert.equal((await asEditor('products', 'PUT', { ...product, id: restrictedId })).status, 403);
@@ -339,9 +362,11 @@ test('API com MariaDB real, múltiplas TVs e sessões persistentes', { timeout: 
       assert.equal((await own('mail-settings', 'PUT', relay)).status, 403);
       assert.equal((await own('account/email', 'PUT', { email: 'bad', password: input.password })).status, 400);
       const beforePassword = (await db.query('SELECT password_hash FROM users WHERE id=?', [id]))[0].password_hash;
-      assert.equal((await own('account/profile', 'PUT', { name: 'Atualizada', email: 'updated@example.com', role: 'admin' })).status, 200);
+      assert.equal((await own('account/profile', 'PUT', { name: 'Atualizada', email: 'updated@example.com' })).status, 400);
+      assert.equal((await (await own('account')).json()).email, input.email);
+      assert.equal((await own('account/profile', 'PUT', { name: 'Atualizada', email: 'updated@example.com', role: 'admin', current_password: input.password })).status, 200);
       assert.equal((await (await own('account')).json()).email, 'updated@example.com');
-      assert.equal((await own('account/profile', 'PUT', { name: 'Atualizada', email: input.email, password: '' })).status, 200);
+      assert.equal((await own('account/profile', 'PUT', { name: 'Atualizada', email: input.email, password: '', current_password: input.password })).status, 200);
       assert.equal((await db.query('SELECT password_hash FROM users WHERE id=?', [id]))[0].password_hash, beforePassword);
       assert.equal((await own('account/profile', 'PUT', { name: 'Atualizada', email: input.email, password: 'replacement-password' })).status, 400);
       assert.equal((await own('account/profile', 'PUT', { name: 'Atualizada', email: input.email, password: 'replacement-password', current_password: 'wrong' })).status, 400);

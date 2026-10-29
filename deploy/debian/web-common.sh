@@ -4,6 +4,9 @@ web_validate() {
   [[ $ORIGIN =~ ^(http|https)://([a-zA-Z0-9]([a-zA-Z0-9.-]*[a-zA-Z0-9])?)$ ]] || fail 'URL inválida: use http://host ou https://host, sem porta/caminho/barra final.'
   SCHEME=${BASH_REMATCH[1]}
   SITE_HOST=${BASH_REMATCH[2]}
+  if [[ $SCHEME == http && $SITE_HOST != 127.0.0.1 && $SITE_HOST != localhost ]]; then
+    fail 'Use HTTPS para acesso pela rede. HTTP é permitido somente em loopback para testes locais.'
+  fi
   [[ $SITE_HOST != *..* ]] || fail 'Nome do servidor inválido.'
   [[ -n $TLS_MODE ]] || { if [[ $SCHEME == https ]]; then TLS_MODE=self-signed; else TLS_MODE=none; fi; }
   case $TLS_MODE in

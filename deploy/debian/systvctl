@@ -48,7 +48,14 @@ case "$COMMAND" in
     # Somente o agendamento remove backups antigos, após um backup bem-sucedido.
     if [[ ${1:-} == --scheduled ]]; then
       find /var/backups/systv -mindepth 1 -maxdepth 1 -type d -name '20*T*Z-*' -mtime +14 -exec rm -rf -- {} +
+      find /var/backups/systv -maxdepth 1 -type f -name 'web-*.tar.gz' -mtime +14 -delete
     fi ;;
+  revoke-devices)
+    [[ $# == 1 ]] || fail 'Use systvctl revoke-devices ID-DA-TV.'
+    exec 9>/run/lock/systv-deploy.lock
+    flock -n 9 || fail 'Outra manutenção está em andamento.'
+    cd /opt/systv/current
+    exec /opt/systv/node/bin/node --env-file=/etc/systv/systv.env scripts/revoke-screen-devices.js "$1" ;;
   activation-link)
     exec 9>/run/lock/systv-deploy.lock
     flock -n 9 || fail 'Outra manutenção está em andamento.'
@@ -98,6 +105,6 @@ case "$COMMAND" in
     printf '%s\n' "$OLD" > /etc/systv/previous-release
     echo 'Código revertido. Migrações do banco não foram desfeitas.' ;;
   help|--help|-h)
-    echo 'Uso: systvctl {version|doctor|backup|activation-link|web [opções]|update [--version vX.Y.Z]|rollback [release]}' ;;
+    echo 'Uso: systvctl {version|doctor|backup|activation-link|revoke-devices ID|web [opções]|update [--version vX.Y.Z]|rollback [release]}' ;;
   *) fail "Comando desconhecido: $COMMAND" ;;
 esac

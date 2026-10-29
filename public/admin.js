@@ -470,9 +470,9 @@ $('add-user').onclick = () => openUser();
 $('profile-access').onclick = () => openUser({ ...currentUser, active: true });
 $('close-user').onclick = () => $('user-dialog').close();
 $('user-form').elements.role.onchange = roleFields;
-$('user-form').elements.password.oninput = () => {
+$('user-form').elements.email.oninput = $('user-form').elements.password.oninput = () => {
   const form = $('user-form');
-  form.elements.current_password.required = form.dataset.own === 'true' && form.elements.password.value !== '';
+  form.elements.current_password.required = form.dataset.own === 'true' && (form.elements.password.value !== '' || form.elements.email.value.trim().toLowerCase() !== (currentUser.email || ''));
 };
 $('user-form').onsubmit = async event => {
   event.preventDefault(); const f = event.target.elements;

@@ -1,6 +1,6 @@
 {
   "name": "systv",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -18,7 +18,7 @@
   "dependencies": {
     "dotenv": "^18.0.5",
     "mysql2": "^3.24.5",
-    "nodemailer": "^10.0.15",
+    "nodemailer": "^10.3.1",
     "sharp": "^0.35.5"
   },
   "description": "Painel de preços para múltiplas TVs com MariaDB e atualizações em tempo real"

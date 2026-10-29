@@ -6,6 +6,7 @@ export const config = {
   host: process.env.HOST || '0.0.0.0',
   port: Number(process.env.PORT || 3000),
   origin: process.env.PUBLIC_ORIGIN,
+  trustProxy: process.env.TRUST_PROXY === 'loopback',
   secureCookie: process.env.COOKIE_SECURE === 'true',
   password: process.env.ADMIN_PASSWORD,
   adminUsername: process.env.ADMIN_USERNAME || 'admin',
