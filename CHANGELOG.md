@@ -1,5 +1,11 @@
 # Histórico
 
+## 2.7.1
+
+- Incorpora a preparação Debian do SCRIPTS-INI: vim, qemu-guest-agent, fastfetch, chave SSH do administrador e autenticação por chave.
+- Usa o banner MKTECNOLOGIA original, MOTD dinâmico, aliases do root e domínio do kernel; acrescenta `systemd.ssh_auto=no` ao GRUB.
+- Preserva backups dos arquivos alterados; atualizações comuns não reaplicam a preparação de SSH/root.
+
 ## 2.7.0
 
 - Adapta o perfil local do MKPABX ao SYSTV: hostname, domínio local em `/etc/hosts`, fuso horário e identificação da MK Tecnologia no console.

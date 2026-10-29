@@ -31,8 +31,10 @@ dela. Veja as opções de certificado abaixo.
 A instalação configura Node.js 24, MariaDB, Nginx, serviço systemd, ativação do
 primeiro administrador por link, backups diários e releases com atualização/rollback.
 O catálogo começa vazio, com uma TV. O servidor recebe identificação da MK Tecnologia
-no console, com sistema, kernel, hostname, IP e endereço do painel. A autodetecção
-SSH por AF_VSOCK é desativada; o acesso SSH normal é preservado.
+no console, com o banner original do SCRIPTS-INI, sistema, kernel, hostname e IP.
+Instala vim, qemu-guest-agent e fastfetch; configura MOTD, aliases do root e domínio
+do kernel. Cadastra a chave pública do administrador do SCRIPTS-INI e desativa
+a autenticação SSH por senha. O GRUB recebe `systemd.ssh_auto=no`.
 
 Para configurar o perfil em uma instalação atualizada:
 

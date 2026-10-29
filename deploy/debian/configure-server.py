@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Perfil local do Debian: identidade, console e generators. Não configura SSH TCP."""
+"""Identidade e console Debian conforme a referência SCRIPTS-INI."""
 import argparse
 import datetime
 import errno
@@ -49,14 +49,12 @@ def banners(hostname, domain, origin, version, interface):
     logo = (HERE / 'console-logo.txt').read_text()
     fqdn = hostname + ('.' + domain if domain else '')
     ipv4 = r'\4' + ('{' + interface + '}' if interface else '')
-    issue = ('\x1b[H\x1b[2J' + logo + '\n  www.mktecnologia.net.br\n  Use linux :)\n\n'
-             + r'  ## Sistema => \S' + '\n' + r'  ## Kernel  => \r on \m' + '\n'
-             + '  ## Hostname => ' + fqdn + '\n'
-             + '  ## IPv4 ' + (interface.upper() if interface else '') + ' => ' + ipv4 + '\n'
-             + '  ## SYSTV ' + version + ' => ' + origin + '\n\n'
-             + '  #################\n  # MK Tecnologia #\n  #################\n\n')
-    motd = logo + '\n  MK Tecnologia | SYSTV ' + version + '\n  Servidor: ' + fqdn + '\n  Painel: ' + origin + '\n  Diagnóstico: systvctl doctor\n\n'
-    return issue, motd
+    issue = ('\n' + logo + '   marcos@mktecnologia.net.br\n   www.mktecnologia.net.br\n   Use linux :)\n\n'
+             + r'   ## Based in => \S' + '\n' + r'   ## Kernel => \r on an \m' + '\n'
+             + '   ## Hostname => ' + fqdn + '\n'
+             + '   ## IPV4 ' + interface + ' => ' + ipv4 + '\n\n'
+             + '   #################\n   # MK Tecnologia #\n   #################\n\n')
+    return issue, ''
 
 def apply(root, values, run=subprocess.run):
     """Escritas recuperáveis; root injetável somente na API dos testes, não na CLI."""
@@ -68,15 +66,15 @@ def apply(root, values, run=subprocess.run):
     if interface and not re.fullmatch(r'[A-Za-z0-9_.:-]{1,15}', interface):
         raise ValueError('Interface inválida.')
     issue, motd = banners(hostname, domain, values['origin'], values['version'], interface)
-    profile = dict(hostname=hostname, domain=domain, timezone=timezone)
+    profile = dict(hostname=hostname, domain=domain, timezone=timezone, interface=interface)
     files = {
         'etc/issue': issue,
         'etc/motd': motd,
         'etc/hostname': hostname + '\n',
         'etc/hosts': local_hosts((root / 'etc/hosts').read_text(), hostname, domain),
         'etc/timezone': timezone + '\n',
-        'etc/sysctl.d/60-systv-console.conf': '# Apenas erros no console; journal e dmesg preservam os registros.\nkernel.printk = 4 4 1 7\n',
-        'etc/systemd/system/getty@.service.d/60-systv-console.conf': "[Service]\nExecStart=\nExecStart=-/sbin/agetty -o '-p -- \\\\u' --noclear %I $TERM\n",
+        'etc/sysctl.d/60-systv-console.conf': '# Domínio local conforme SCRIPTS-INI.\nkernel.domainname = ' + domain + '\n',
+        'etc/systemd/system/getty@.service.d/60-systv-console.conf': "[Service]\nExecStart=\nExecStart=-/sbin/agetty -o '-p -- \\\\u' %I $TERM\n",
         'etc/systv/server-profile.json': json.dumps(profile, ensure_ascii=False, indent=2) + '\n',
     }
     links = {
@@ -123,6 +121,9 @@ def apply(root, values, run=subprocess.run):
         finally:
             temporary.unlink(missing_ok=True)
     old_hostname = values['previous_hostname']
+    # A referência protege /etc/issue; remove o atributo só durante a escrita.
+    issue_path = str(root / 'etc/issue')
+    if not values.get('container'): run(['chattr', '-i', issue_path], check=True)
     try:
         for name in changed:
             write(name, ('file', files[name].encode(), 0o644) if name in files else ('link', links[name], 0o777))
@@ -136,16 +137,18 @@ def apply(root, values, run=subprocess.run):
     except BaseException:
         for name in changed: write(name, before[name])
         if old_hostname != hostname: run(['hostnamectl', '--transient', 'set-hostname', old_hostname], check=False)
-        # O printk anterior é restaurado em memória, sem mudar arquivos de terceiros.
-        if values.get('previous_printk') and not values.get('container'):
-            run(['sysctl', '-w', 'kernel.printk=' + values['previous_printk']], check=False)
+        # Restaura o domínio em memória, sem mudar arquivos de terceiros.
+        if values.get('previous_domainname') and not values.get('container'):
+            run(['sysctl', '-w', 'kernel.domainname=' + values['previous_domainname']], check=False)
         run(['systemctl', 'daemon-reload'], check=False)
         raise
+    finally:
+        if not values.get('container'): run(['chattr', '+i', issue_path], check=True)
     return backup
 
 def main():
     parser = argparse.ArgumentParser(description='Perfil local do servidor SYSTV')
-    for name in ['origin', 'hostname', 'domain', 'timezone']: parser.add_argument('--' + name)
+    for name in ['origin', 'hostname', 'domain', 'timezone', 'interface']: parser.add_argument('--' + name)
     parser.add_argument('--validate', action='store_true')
     parser.add_argument('--initial', action='store_true')
     parser.add_argument('--refresh', action='store_true')
@@ -167,17 +170,32 @@ def main():
     except ValueError: named = '.' in host
     current_hostname = socket.gethostname()
     hostname = args.hostname or previous.get('hostname') or (host.split('.')[0] if args.initial and named else current_hostname.split('.')[0])
-    domain = args.domain if args.domain is not None else previous.get('domain', host.split('.', 1)[1] if named else '')
+    domain = args.domain if args.domain is not None else previous.get('domain', host.split('.', 1)[1] if named else 'mk.intranet')
     timezone_file = root / 'etc/timezone'
     current_timezone = timezone_file.read_text().strip() if timezone_file.exists() else 'Etc/UTC'
     timezone = args.timezone or previous.get('timezone') or ('America/Sao_Paulo' if args.initial else current_timezone)
     route = subprocess.run(['ip', '-4', 'route', 'show', 'default'], check=True, capture_output=True, text=True).stdout
     match = re.search(r'\bdev\s+([^\s]+)', route)
+    interfaces = [line.split(':', 2)[1].strip().split('@')[0] for line in subprocess.run(
+        ['ip', '-o', 'link', 'show'], check=True, capture_output=True, text=True).stdout.splitlines()]
+    interfaces = [name for name in interfaces if name != 'lo']
+    interface = args.interface or previous.get('interface', '')
+    if not interface:
+        if len(interfaces) > 1 and not args.refresh and sys.stdin.isatty():
+            for index, name in enumerate(interfaces, 1): print(f'{index}) {name}')
+            while True:
+                choice = input('Selecione a interface usada no /etc/issue: ')
+                if choice.isdigit() and 1 <= int(choice) <= len(interfaces):
+                    interface = interfaces[int(choice)-1]
+                    break
+        else:
+            interface = match[1] if match else (interfaces[0] if interfaces else '')
+    if interface not in interfaces: raise ValueError('Interface de rede inexistente.')
     active_version = root / 'opt/systv/current/VERSION'
     version_file = active_version if active_version.is_file() else (HERE / '../../VERSION').resolve()
     values = dict(hostname=hostname, domain=domain, timezone=timezone, origin=origin,
-                  version=version_file.read_text().strip(), interface=match[1] if match else '',
-                  previous_hostname=current_hostname, previous_printk=Path('/proc/sys/kernel/printk').read_text().strip(),
+                  version=version_file.read_text().strip(), interface=interface,
+                  previous_hostname=current_hostname, previous_domainname=Path('/proc/sys/kernel/domainname').read_text().strip(),
                   container=subprocess.run(['systemd-detect-virt', '--container', '--quiet'], check=False).returncode == 0)
     backup = apply(root, values)
     print('Perfil local configurado: ' + hostname + ('.' + domain if domain else '') + ' | ' + timezone)

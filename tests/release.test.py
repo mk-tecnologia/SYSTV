@@ -22,7 +22,7 @@ class ProductionRelease(unittest.TestCase):
             self.assertTrue({'VERSION', 'install.sh', 'server.js', 'scripts/setup-production.js',
                              'deploy/debian/systv.service', 'deploy/debian/systvctl',
                              'deploy/debian/configure-server.sh', 'deploy/debian/configure-server.py',
-                             'deploy/debian/console-logo.txt', 'public/activate.html',
+                             'deploy/debian/console-logo.txt', 'deploy/debian/prepare-debian.sh', 'public/activate.html',
                              'public/activate.js', 'scripts/activation-link.js', 'database/migrations/009_initial_activation.sql'} <= paths)
             for name in paths:
                 parts = pathlib.PurePosixPath(name).parts

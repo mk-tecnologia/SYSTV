@@ -13,6 +13,7 @@ TLS_KEY=''
 SERVER_HOSTNAME=''
 SERVER_DOMAIN=''
 SERVER_TIMEZONE=''
+SERVER_INTERFACE=''
 usage() {
   cat <<'HELP'
 SYSTV — Debian 13
@@ -20,7 +21,7 @@ Uso: install.sh [--origin https://IP-ou-host --tls self-signed]
      install.sh --origin http://127.0.0.1 --tls none  # somente teste local
      install.sh --update
      install.sh --resume
-     install.sh --configure-server [--hostname srv-systv --domain mk.intranet --timezone America/Sao_Paulo]
+     install.sh --configure-server [--hostname srv-systv --domain mk.intranet --timezone America/Sao_Paulo --interface ens18]
      install.sh --configure-web [--origin URL] [--tls self-signed|none|provided|letsencrypt]
 HTTPS local é padrão; use --tls letsencrypt apenas em servidor público.
 Sem parâmetros, solicita a URL de acesso. Instala releases em /opt/systv/releases.
@@ -29,12 +30,12 @@ HELP
 fail() { echo "Erro: $*" >&2; exit 1; }
 while (($#)); do
   case "$1" in
-    --origin|--email|--tls|--tls-cert|--tls-key|--hostname|--domain|--timezone)
+    --origin|--email|--tls|--tls-cert|--tls-key|--hostname|--domain|--timezone|--interface)
       (($# >= 2)) || fail "Falta valor para $1"
       case $1 in
         --origin) ORIGIN=$2 ;; --email) EMAIL=$2 ;; --tls) TLS_MODE=$2 ;;
         --tls-cert) TLS_CERT=$2 ;; --tls-key) TLS_KEY=$2 ;;
-        --hostname) SERVER_HOSTNAME=$2 ;; --domain) SERVER_DOMAIN=$2 ;; --timezone) SERVER_TIMEZONE=$2 ;;
+        --hostname) SERVER_HOSTNAME=$2 ;; --domain) SERVER_DOMAIN=$2 ;; --timezone) SERVER_TIMEZONE=$2 ;; --interface) SERVER_INTERFACE=$2 ;;
       esac
       shift 2 ;;
     --resume) RESUME=true; shift ;;
@@ -59,6 +60,7 @@ if [[ $MODE == configure-server ]]; then
   [[ -z $SERVER_HOSTNAME ]] || SERVER_ARGS+=(--hostname "$SERVER_HOSTNAME")
   [[ -z $SERVER_DOMAIN ]] || SERVER_ARGS+=(--domain "$SERVER_DOMAIN")
   [[ -z $SERVER_TIMEZONE ]] || SERVER_ARGS+=(--timezone "$SERVER_TIMEZONE")
+  [[ -z $SERVER_INTERFACE ]] || SERVER_ARGS+=(--interface "$SERVER_INTERFACE")
   exec bash "$SOURCE/deploy/debian/configure-server.sh" "${SERVER_ARGS[@]}"
 fi
 if [[ $MODE == configure-web ]]; then
@@ -77,20 +79,20 @@ if [[ $RESUME == true ]]; then
   [[ $MODE == install ]] || fail '--resume só retoma instalação inicial.'
   [[ -f /etc/systv/install-pending.json && ! -L /etc/systv/install-pending.json && -f /etc/systv/systv.env ]] || fail 'Nenhuma instalação pendente encontrada.'
   [[ $(stat -c '%u:%a' /etc/systv/install-pending.json) == 0:600 ]] || fail 'Estado de instalação inseguro.'
-  [[ -z $ORIGIN && -z $EMAIL && -z $TLS_MODE && -z $TLS_CERT && -z $TLS_KEY && -z $SERVER_HOSTNAME && -z $SERVER_DOMAIN && -z $SERVER_TIMEZONE ]] || fail '--resume reutiliza os parâmetros originais.'
+  [[ -z $ORIGIN && -z $EMAIL && -z $TLS_MODE && -z $TLS_CERT && -z $TLS_KEY && -z $SERVER_HOSTNAME && -z $SERVER_DOMAIN && -z $SERVER_TIMEZONE && -z $SERVER_INTERFACE ]] || fail '--resume reutiliza os parâmetros originais.'
   mapfile -t PENDING < <(python3 - <<'STATE'
 import json
 from pathlib import Path
 state=json.loads(Path('/etc/systv/install-pending.json').read_text())
-for key in ['origin','tls','cert','key','email','hostname','domain','timezone']:
+for key in ['origin','tls','cert','key','email','hostname','domain','timezone','interface']:
     value=state.get(key, '')
     if not isinstance(value,str) or '\n' in value or '\r' in value: raise SystemExit('Estado inválido')
     print(value)
 STATE
 )
-  [[ ${#PENDING[@]} == 8 ]] || fail 'Estado inválido.'
+  [[ ${#PENDING[@]} == 9 ]] || fail 'Estado inválido.'
   ORIGIN=${PENDING[0]} TLS_MODE=${PENDING[1]} TLS_CERT=${PENDING[2]} TLS_KEY=${PENDING[3]} EMAIL=${PENDING[4]}
-  SERVER_HOSTNAME=${PENDING[5]} SERVER_DOMAIN=${PENDING[6]} SERVER_TIMEZONE=${PENDING[7]}
+  SERVER_HOSTNAME=${PENDING[5]} SERVER_DOMAIN=${PENDING[6]} SERVER_TIMEZONE=${PENDING[7]} SERVER_INTERFACE=${PENDING[8]}
 fi
 if [[ $MODE == install ]]; then
   if [[ $RESUME == false ]]; then
@@ -211,12 +213,12 @@ DB_POOL_SIZE=10
 MAIL_ENCRYPTION_KEY=$MAIL_KEY
 ENV
   chmod 0600 "$INITIAL_CONFIG/systv.env"
-  python3 - "$ORIGIN" "$TLS_MODE" "$TLS_CERT" "$TLS_KEY" "$EMAIL" "$INITIAL_CONFIG" "$SERVER_HOSTNAME" "$SERVER_DOMAIN" "$SERVER_TIMEZONE" <<'STATE'
+  python3 - "$ORIGIN" "$TLS_MODE" "$TLS_CERT" "$TLS_KEY" "$EMAIL" "$INITIAL_CONFIG" "$SERVER_HOSTNAME" "$SERVER_DOMAIN" "$SERVER_TIMEZONE" "$SERVER_INTERFACE" <<'STATE'
 import json, os, sys
 from pathlib import Path
 path=Path(sys.argv[6]) / 'install-pending.json'
 state=dict(zip(['origin','tls','cert','key','email'],sys.argv[1:6]))
-state.update(zip(['hostname','domain','timezone'],sys.argv[7:10]))
+state.update(zip(['hostname','domain','timezone','interface'],sys.argv[7:11]))
 path.write_text(json.dumps(state))
 os.chmod(path,0o600)
 STATE
@@ -257,13 +259,16 @@ else
   OLD_RELEASE=$(readlink -f /opt/systv/current)
   [[ $(cat "$OLD_RELEASE/VERSION") != "$VERSION" ]] || fail "A versão $VERSION já está ativa."
 fi
-# Mesmo perfil local nas instalações e atualizações; não altera SSH TCP ou a rede.
+# Preparação Debian na instalação; atualização preserva SSH e personalizações.
 SERVER_ARGS=()
 [[ $MODE != install ]] || SERVER_ARGS+=(--initial --origin "$ORIGIN")
 [[ -z $SERVER_HOSTNAME ]] || SERVER_ARGS+=(--hostname "$SERVER_HOSTNAME")
 [[ -z $SERVER_DOMAIN ]] || SERVER_ARGS+=(--domain "$SERVER_DOMAIN")
 [[ -z $SERVER_TIMEZONE ]] || SERVER_ARGS+=(--timezone "$SERVER_TIMEZONE")
-SYSTV_DEPLOY_LOCK_HELD=1 bash "$SOURCE/deploy/debian/configure-server.sh" "${SERVER_ARGS[@]}"
+[[ -z $SERVER_INTERFACE ]] || SERVER_ARGS+=(--interface "$SERVER_INTERFACE")
+SERVER_REFRESH_ONLY=0
+[[ $MODE != update ]] || SERVER_REFRESH_ONLY=1
+SYSTV_SERVER_REFRESH_ONLY=$SERVER_REFRESH_ONLY SYSTV_DEPLOY_LOCK_HELD=1 bash "$SOURCE/deploy/debian/configure-server.sh" "${SERVER_ARGS[@]}"
 # O runtime pertence à release: atualização e rollback incluem a versão do Node.
 curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' https://nodejs.org/dist/latest-v24.x/SHASUMS256.txt -o "$WORK/SHASUMS256.txt"
 NODE_FILE=$(awk -v arch="$NODE_ARCH" '$2 ~ ("^node-v24\\.[0-9]+\\.[0-9]+-linux-" arch "\\.tar\\.xz$") {print $2}' "$WORK/SHASUMS256.txt")
