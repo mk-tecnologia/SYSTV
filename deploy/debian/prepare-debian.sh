@@ -3,6 +3,9 @@
 # Identidade, interface e /etc/issue são gerenciados por configure-server.py.
 set -Eeuo pipefail
 umask 077
+PREPARE_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=deploy/debian/install-files.sh
+source "$PREPARE_DIR/install-files.sh"
 [[ $EUID == 0 ]] || { echo 'Execute como root.' >&2; exit 1; }
 BACKUP_DIR="/var/backups/systv/debian-setup-$(date -u +%Y%m%dT%H%M%S)-$$"
 PUBLIC_KEY='ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKR5RW8eXT3nFrUjFBohZbMARFHB9VMASxomQIDR09SM marcos@mktecnologia.net.br'
@@ -32,11 +35,14 @@ log 'Cadastrando a chave pública SSH para o usuário root'
 mkdir -p /root/.ssh
 chmod 0700 /root/.ssh
 backup_file /root/.ssh/authorized_keys
-touch /root/.ssh/authorized_keys
-chmod 0600 /root/.ssh/authorized_keys
-if ! grep -qxF "$PUBLIC_KEY" /root/.ssh/authorized_keys; then
-    printf '%s\n' "$PUBLIC_KEY" >> /root/.ssh/authorized_keys
+KEY_TEMP=$(mktemp /root/.ssh/.authorized_keys.XXXXXX)
+if [[ -f /root/.ssh/authorized_keys ]]; then cat /root/.ssh/authorized_keys > "$KEY_TEMP"; fi
+if ! grep -qxF "$PUBLIC_KEY" "$KEY_TEMP"; then
+    printf '\n%s\n' "$PUBLIC_KEY" >> "$KEY_TEMP"
 fi
+install_durable_file "$KEY_TEMP" /root/.ssh/authorized_keys 0600
+rm -f "$KEY_TEMP"
+grep -qxF "$PUBLIC_KEY" /root/.ssh/authorized_keys || die 'chave pública não foi gravada'
 
 log 'Desativando autenticação SSH por senha e habilitando chave pública'
 backup_file /etc/ssh/sshd_config
@@ -45,7 +51,7 @@ if [[ -e /etc/ssh/sshd_config.d/99-mktecnologia.conf ]]; then
     rm -f /etc/ssh/sshd_config.d/99-mktecnologia.conf
 fi
 
-SSHD_CONFIG_TEMP=$(mktemp /tmp/sshd_config.XXXXXX)
+SSHD_CONFIG_TEMP=$(mktemp /etc/ssh/.sshd_config.XXXXXX)
 awk '
     function print_root_login_config() {
         print "# PermitRootLogin yes"
@@ -53,8 +59,10 @@ awk '
     }
     BEGIN {
         global = 1
-        configured = 0
+        configured = 1
         # O primeiro valor global prevalece, inclusive antes dos Includes.
+        print_root_login_config()
+        print "AuthenticationMethods publickey"
         print "PasswordAuthentication no"
         print "KbdInteractiveAuthentication no"
         print "PubkeyAuthentication yes"
@@ -74,7 +82,7 @@ awk '
 
         candidate = normalized
         sub(/^#[[:space:]]*/, "", candidate)
-        if (global && candidate ~ /^(passwordauthentication|kbdinteractiveauthentication|challengeresponseauthentication|pubkeyauthentication)[[:space:]]+/) next
+        if (global && candidate ~ /^(authenticationmethods|passwordauthentication|kbdinteractiveauthentication|challengeresponseauthentication|pubkeyauthentication)[[:space:]]+/) next
         if (global && candidate ~ /^permitrootlogin[[:space:]]+/) {
             if (!configured) {
                 print_root_login_config()
@@ -93,8 +101,6 @@ awk '
         }
     }
 ' /etc/ssh/sshd_config > "$SSHD_CONFIG_TEMP"
-cat "$SSHD_CONFIG_TEMP" > /etc/ssh/sshd_config
-rm -f "$SSHD_CONFIG_TEMP"
 
 restore_ssh_on_error() {
     cp -a "$BACKUP_DIR/etc/ssh/sshd_config" /etc/ssh/sshd_config
@@ -103,16 +109,20 @@ restore_ssh_on_error() {
     fi
 }
 trap restore_ssh_on_error EXIT
-sshd -t
-EFFECTIVE_SSH_AUTH=$(sshd -T)
+sshd -t -f "$SSHD_CONFIG_TEMP"
+EFFECTIVE_SSH_AUTH=$(sshd -T -f "$SSHD_CONFIG_TEMP")
 EFFECTIVE_ROOT_LOGIN=$(awk '$1 == "permitrootlogin" {print $2}' <<< "$EFFECTIVE_SSH_AUTH")
 [[ $EFFECTIVE_ROOT_LOGIN == without-password || $EFFECTIVE_ROOT_LOGIN == prohibit-password ]] \
     || die "configuração SSH efetiva inesperada: PermitRootLogin $EFFECTIVE_ROOT_LOGIN"
-for EXPECTED_SSH_AUTH in 'passwordauthentication no' 'kbdinteractiveauthentication no' 'pubkeyauthentication yes'; do
+for EXPECTED_SSH_AUTH in 'authenticationmethods publickey' 'passwordauthentication no' 'kbdinteractiveauthentication no' 'pubkeyauthentication yes'; do
     grep -qxF "$EXPECTED_SSH_AUTH" <<< "$EFFECTIVE_SSH_AUTH" \
         || die "configuração SSH efetiva inesperada; esperado: $EXPECTED_SSH_AUTH"
 done
-systemctl restart ssh
+install_durable_file "$SSHD_CONFIG_TEMP" /etc/ssh/sshd_config
+rm -f "$SSHD_CONFIG_TEMP"
+sshd -t
+systemctl enable ssh
+systemctl reload-or-restart ssh
 trap - EXIT
 
 log 'Configurando fastfetch no MOTD dinâmico'

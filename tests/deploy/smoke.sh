@@ -7,6 +7,17 @@ if [[ ! -L /opt/systv/current ]]; then
   TEST_SCHEME=${SYSTV_TEST_TRANSPORT:-http}
   bash deploy/debian/install.sh --origin "$TEST_SCHEME://127.0.0.1"
 fi
+# Confere o resultado da instalação inicial antes de qualquer systvctl server.
+SSH_EFFECTIVE=$(sshd -T)
+for directive in 'authenticationmethods publickey' 'passwordauthentication no' 'kbdinteractiveauthentication no' 'pubkeyauthentication yes' 'permitrootlogin without-password'; do
+  grep -qxF "$directive" <<< "$SSH_EFFECTIVE"
+done
+grep -qxF 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIKR5RW8eXT3nFrUjFBohZbMARFHB9VMASxomQIDR09SM marcos@mktecnologia.net.br' /root/.ssh/authorized_keys
+for unit in systv.service systv-backup.service systv-backup.timer; do
+  test -s "/etc/systemd/system/$unit"
+  cmp "/opt/systv/current/deploy/debian/$unit" "/etc/systemd/system/$unit"
+done
+/opt/systv/node/bin/node --version
 systvctl doctor
 # Exercita autenticação, inicialização vazia e permissões do serviço real.
 NODE_TEST_CA=''
