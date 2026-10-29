@@ -393,3 +393,20 @@ aliases, reaplicação e renderização do banner pelo agetty em pseudoterminal.
 Os testes de GRUB usam arquivos temporários para verificar preservação dos
 argumentos, ausência de duplicação e rejeição de formato desconhecido.
 A aparência no console Proxmox e o reboot da VM ainda não foram validados.
+
+### Integridade e SSH na instalação inicial (2.7.2)
+
+O instalador compara o executável Node extraído com o pacote oficial validado,
+verifica sua execução e sincroniza a release em disco antes de ativá-la. Os três
+arquivos systemd são escritos em arquivos temporários, conferidos e sincronizados
+antes da substituição por rename; uma falha de gravação interrompe a instalação.
+As configurações também são sincronizadas antes da mensagem de conclusão.
+Isso reduz o risco de arquivos vazios ou truncados após um reboot. Não corrige
+falhas físicas ou armazenamento do hipervisor que ignore pedidos de gravação.
+
+Na instalação inicial, a chave pública do SCRIPTS-INI é gravada no root com
+permissões 0700/0600 e conferida antes da configuração SSH. A configuração é
+validada antes de substituir o arquivo ativo e exige `AuthenticationMethods publickey`,
+`PasswordAuthentication no`, `KbdInteractiveAuthentication no`,
+`PubkeyAuthentication yes` e `PermitRootLogin prohibit-password`.
+O serviço SSH é recarregado, preservando as sessões abertas.

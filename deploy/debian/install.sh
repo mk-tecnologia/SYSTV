@@ -3,6 +3,8 @@
 set -Eeuo pipefail
 umask 027
 SOURCE=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
+# shellcheck source=deploy/debian/install-files.sh
+source "$SOURCE/deploy/debian/install-files.sh"
 ORIGIN=''
 EMAIL=''
 MODE=install
@@ -288,6 +290,12 @@ rsync -r --chmod=D755,F644 "$SOURCE/deploy/debian/" "$RELEASE/deploy/debian/"
 install -m 0755 "$SOURCE/install.sh" "$RELEASE/install.sh"
 install -d -m 0755 "$RELEASE/node"
 tar -xJf "$WORK/$NODE_FILE" --strip-components=1 -C "$RELEASE/node"
+# Confere o executável extraído, incluindo truncamentos, antes de usá-lo.
+NODE_MEMBER=${NODE_FILE%.tar.xz}/bin/node
+NODE_EXPECTED=$(tar -xJOf "$WORK/$NODE_FILE" "$NODE_MEMBER" | sha256sum | cut -d ' ' -f1)
+NODE_ACTUAL=$(sha256sum "$RELEASE/node/bin/node" | cut -d ' ' -f1)
+[[ $NODE_EXPECTED == "$NODE_ACTUAL" ]] || fail 'Executável Node extraído está incompleto ou corrompido.'
+[[ $("$RELEASE/node/bin/node" --version) == "$NODE_VERSION" ]] || fail 'Runtime Node inválido.'
 # UID isolado; nenhum arquivo de código/ferramenta root é gravável pela aplicação.
 if ! getent passwd systv-build >/dev/null; then
   getent group systv-build >/dev/null && fail 'Grupo de build conflitante.'
@@ -318,7 +326,9 @@ fi
 for script in migrate setup-production; do
   (cd "$RELEASE"; runuser -u systv -- "$RELEASE/node/bin/node" --env-file=/etc/systv/systv.env "scripts/$script.js")
 done
-install -m 0644 "$SOURCE/deploy/debian/systv.service" /etc/systemd/system/systv.service
+# A release deve chegar ao disco antes de ser apontada por current.
+sync -f "$RELEASE"
+install_durable_file "$SOURCE/deploy/debian/systv.service" /etc/systemd/system/systv.service
 # Mantém runtime das releases legadas para permitir rollback após a conversão.
 if [[ -d /opt/systv/node && ! -L /opt/systv/node ]]; then
   [[ ! -e /opt/systv/node-legacy ]] || fail 'Runtime legado conflitante.'
@@ -335,8 +345,8 @@ ln -sfn /opt/systv/current/node /opt/systv/node
 install -d -m 0755 /usr/local/sbin
 ln -sfn /opt/systv/current/deploy/debian/systvctl /usr/local/sbin/systvctl
 chmod 0755 "$RELEASE/deploy/debian/systvctl"
-install -m 0644 "$SOURCE/deploy/debian/systv-backup.service" /etc/systemd/system/
-install -m 0644 "$SOURCE/deploy/debian/systv-backup.timer" /etc/systemd/system/
+install_durable_file "$SOURCE/deploy/debian/systv-backup.service" /etc/systemd/system/systv-backup.service
+install_durable_file "$SOURCE/deploy/debian/systv-backup.timer" /etc/systemd/system/systv-backup.timer
 systemctl daemon-reload
 systemctl enable --now systv-backup.timer
 systemctl enable systv nginx
@@ -366,6 +376,11 @@ if [[ $MODE == install ]]; then
   fi
   rm -f /etc/systv/install-pending.json
 fi
+# Não anuncia conclusão enquanto os arquivos/configurações estiverem pendentes.
+sync -f "$RELEASE"
+sync -f /etc/systv
+sync -f /etc/systemd/system
+sync -f /root/.ssh
 printf '\nSYSTV %s pronto.\nDiagnóstico: systvctl doctor\nLog: %s\n' "$VERSION" "$LOG_FILE"
 if [[ $MODE == install ]]; then
   if [[ -t 3 ]]; then

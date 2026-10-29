@@ -11,6 +11,7 @@ grep -qx '127.0.1.1 srv-systv.mk.intranet srv-systv' /etc/hosts
 [[ $(readlink /etc/localtime) == /usr/share/zoneinfo/America/Sao_Paulo ]]
 [[ $(readlink /etc/systemd/system-generators/systemd-ssh-generator) == /dev/null ]]
 SSH_EFFECTIVE=$(sshd -T)
+grep -qx 'authenticationmethods publickey' <<< "$SSH_EFFECTIVE"
 grep -qx 'passwordauthentication no' <<< "$SSH_EFFECTIVE"
 grep -qx 'kbdinteractiveauthentication no' <<< "$SSH_EFFECTIVE"
 grep -qx 'pubkeyauthentication yes' <<< "$SSH_EFFECTIVE"

@@ -1,5 +1,12 @@
 # Histórico
 
+## 2.7.2
+
+- Publica os arquivos systemd por substituição atômica e confirma a gravação da release e das configurações em disco antes de concluir.
+- Confere o hash do executável Node extraído contra o pacote validado e verifica sua execução antes de ativar a release.
+- Grava e valida a chave pública SSH do SCRIPTS-INI antes de ativar acesso somente por chave, com `AuthenticationMethods publickey` e recarga do SSH.
+- Verifica chave, autenticação e arquivos de serviço no teste da instalação inicial, sem depender da execução posterior de `systvctl server`.
+
 ## 2.7.1
 
 - Incorpora a preparação Debian do SCRIPTS-INI: vim, qemu-guest-agent, fastfetch, chave SSH do administrador e autenticação por chave.

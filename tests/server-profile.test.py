@@ -47,6 +47,22 @@ class ServerProfile(unittest.TestCase):
             self.assertNotIn('kernel.printk',(root/'etc/sysctl.d/60-systv-console.conf').read_text())
             self.assertIsNone(profile.apply(root,dict(values,previous_hostname='srv-systv'),lambda command,**kwargs:self.fail('Reaplicação alterou serviços.')))
 
+class DurableFiles(unittest.TestCase):
+    def test_failed_flush_and_empty_source_preserve_previous_unit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root=Path(directory)
+            source=root/'new.service'; destination=root/'existing.service'
+            destination.write_text('previous complete unit\n')
+            source.write_text('[Unit]\nDescription=New unit\n')
+            command='source "$1"; sync() { return 1; }; install_durable_file "$2" "$3"'
+            args=['bash','-c',command,'test',str(ROOT/'deploy/debian/install-files.sh'),str(source),str(destination)]
+            self.assertNotEqual(subprocess.run(args,capture_output=True).returncode,0)
+            self.assertEqual(destination.read_text(),'previous complete unit\n')
+            self.assertEqual(list(root.glob('*.pending.*')),[])
+            source.write_text('')
+            self.assertNotEqual(subprocess.run(args,capture_output=True).returncode,0)
+            self.assertEqual(destination.read_text(),'previous complete unit\n')
+
 class DebianPreparation(unittest.TestCase):
     def test_grub_preserves_arguments_and_does_not_duplicate_flag(self):
         script=(ROOT/'deploy/debian/prepare-debian.sh').read_text()
