@@ -1,145 +1,167 @@
-# SYSTV — produção no Debian 13
+# SYSTV
 
-Painel de preços para múltiplas TVs, com administração, usuários, permissões,
-logos e atualização dos preços em tempo real. Instalador para Debian 13 amd64
-ou arm64 com systemd, sem depender de Docker/DDEV no servidor.
+**Painel de preços para múltiplas TVs, desenvolvido pela MK Tecnologia.**
 
-## Instalação por link
+O SYSTV centraliza a gestão de produtos, preços e identidade visual de estabelecimentos comerciais. A administração é feita pelo navegador, com permissões por usuário e por TV. As alterações são transmitidas às telas em tempo real, sem recarregamento manual.
 
-Como root, em um Debian 13 dedicado com acesso à internet para baixar os pacotes:
+[Instalação](#instalação) · [Operação](#operação) · [Documentação](#documentação) · [Releases](https://github.com/mk-tecnologia/SYSTV/releases) · [Histórico de versões](CHANGELOG.md)
+
+## Recursos
+
+- **Múltiplas TVs:** catálogos independentes, com produtos, preços, unidades, ofertas e ordenação.
+- **Atualização em tempo real:** distribuição das alterações por Server-Sent Events (SSE).
+- **Identidade visual:** nome da empresa, logos e mensagem de rodapé configuráveis.
+- **Controle de acesso:** administradores e operadores, com autorização de edição por TV.
+- **Contas e autenticação:** recuperação de senha por e-mail e autenticação em dois fatores.
+- **Operação do servidor:** diagnóstico, backups agendados, atualização e rollback por linha de comando.
+
+## Requisitos
+
+| Componente | Requisito |
+| --- | --- |
+| Sistema operacional | Debian GNU/Linux 13 dedicado |
+| Arquitetura | `amd64` ou `arm64` |
+| Gerenciamento de serviços | systemd em execução |
+| Instalação | Acesso `root` e conexão à internet para baixar pacotes e releases |
+| Clientes | Navegador com acesso ao servidor e confiança no certificado HTTPS |
+| Rede | Nome ou IP acessível pelos computadores e pelas TVs |
+
+O instalador provisiona Node.js 24, MariaDB, Nginx e os serviços systemd. Docker e DDEV são usados apenas no desenvolvimento; não são necessários no servidor de produção.
+
+## Instalação
+
+Em um Debian 13 dedicado, execute como `root`:
 
 ```bash
 apt-get update && apt-get install -y curl ca-certificates
-curl -fsSL https://github.com/mk-tecnologia/systv/releases/latest/download/install.sh \
-  -o /tmp/systv-install.sh
+curl -fsSLo /tmp/systv-install.sh \
+  https://github.com/mk-tecnologia/SYSTV/releases/latest/download/install.sh
 bash /tmp/systv-install.sh
 ```
 
-O assistente pede hostname, domínio local, fuso e URL de acesso, e baixa a última release estável, verificando
-o SHA-256. Na intranet, por exemplo:
+O assistente solicita nome do servidor, domínio local, fuso horário e URL de acesso. A última release estável é baixada e seu SHA-256 é verificado antes da instalação.
+
+Para informar os parâmetros diretamente:
 
 ```bash
-bash /tmp/systv-install.sh --origin https://tv.empresa.intranet
+bash /tmp/systv-install.sh \
+  --origin https://srv-systv.empresa.intranet \
+  --hostname srv-systv \
+  --domain empresa.intranet \
+  --timezone America/Sao_Paulo \
+  --interface ens18
 ```
 
-HTTPS usa **certificado local por padrão**, sem contatar Let's Encrypt e sem
-precisar expor o servidor na internet. Distribua o certificado gerado aos
-computadores e TVs e configure a confiança nesses dispositivos; caso contrário,
-o navegador mostrará um alerta. Se a empresa tem uma CA, prefira um certificado
-dela. Veja as opções de certificado abaixo.
+Ajuste o domínio e a interface ao ambiente. O nome de acesso precisa resolver para o IP do servidor nos clientes. O instalador não configura o DNS da rede nem regras de firewall.
 
-A instalação configura Node.js 24, MariaDB, Nginx, serviço systemd, ativação do
-primeiro administrador por link, backups diários e releases com atualização/rollback.
-O catálogo começa vazio, com uma TV. O servidor recebe identificação da MK Tecnologia
-no console, com o banner original do SCRIPTS-INI, sistema, kernel, hostname e IP.
-Instala vim, qemu-guest-agent e fastfetch; configura MOTD, aliases do root e domínio
-do kernel. Cadastra a chave pública do administrador do SCRIPTS-INI e desativa
-a autenticação SSH por senha. O GRUB recebe `systemd.ssh_auto=no`.
+### Preparação do Debian
 
-Para configurar o perfil em uma instalação atualizada:
+A instalação inicial incorpora o perfil Debian do [SCRIPTS-INI](https://github.com/mk-tecnologia/SCRIPTS-INI):
 
-```bash
-systvctl server --hostname srv-systv --domain mk.intranet --timezone America/Sao_Paulo
-```
+- Banner original MKTECNOLOGIA no console, com informações do sistema e IPv4 da interface.
+- `vim`, `fastfetch`, MOTD, aliases do root e domínio do kernel.
+- QEMU Guest Agent instalado; sua inicialização depende do canal disponibilizado pela VM.
+- Ajuste `systemd.ssh_auto=no` no GRUB para desativar a autodetecção de sockets SSH AF_VSOCK.
 
-## Corrigir uma instalação interrompida no Certbot
+**Acesso SSH:** o instalador cadastra no root a chave pública de `marcos@mktecnologia.net.br`, idêntica à do SCRIPTS-INI, preserva chaves existentes e exige autenticação por chave pública. Senha e autenticação interativa SSH são desativadas. A configuração é validada antes da aplicação.
 
-Não apague o banco nem reinstale. Baixe o instalador atual pelo comando acima e execute:
+Ao concluir, execute `systvctl doctor`. Reinicie o servidor para aplicar o parâmetro do GRUB.
 
-```bash
-bash /tmp/systv-install.sh --configure-web --tls self-signed
-```
+## Primeiro acesso
 
-O comando lê a URL já configurada e instala HTTPS local. Preserva o banco,
-as contas, a senha administrativa e a chave SMTP; salva uma cópia privada da
-configuração anterior. Também funciona para instalações das releases 2.1.x.
-Depois, `systvctl update` instala a versão mais nova do código e das ferramentas.
+A instalação cria um catálogo vazio com uma TV e emite um link de ativação para o primeiro administrador. Encaminhe esse link por um canal privado ao responsável, que definirá nome, usuário e senha no navegador.
 
-## Escolher o modo de acesso
+O link é de uso único e tem validade de **24 horas**. Após a ativação, não pode ser utilizado para substituir uma conta existente. Não há senha administrativa padrão.
 
-| Modo | Quando usar | Opções |
-|---|---|---|
-| HTTPS local | Intranet sem CA; exige configurar confiança nos clientes | `--origin https://tv.empresa.intranet --tls self-signed` |
-| HTTPS com CA da empresa | Intranet com certificados corporativos | `--origin https://tv.empresa.intranet --tls provided --tls-cert /root/fullchain.pem --tls-key /root/server.key` |
-| HTTP local | Somente testes em loopback | `--origin http://127.0.0.1 --tls none` |
-| Let's Encrypt HTTP-01 | Domínio público com porta 80 acessível externamente | `--origin https://tv.exemplo.com.br --tls letsencrypt --email admin@exemplo.com.br` |
-
-Let’s Encrypt não emite para nomes `.intranet`, `.local` ou outros nomes
-internos. Para um domínio público em um servidor privado, é possível emitir
-por DNS-01 fora do instalador e importar o certificado com `provided`; não é
-necessário publicar o servidor na internet para esse fluxo.
-
-Na versão atual, altere a configuração existente usando as mesmas opções:
-
-```bash
-systvctl web --tls self-signed
-systvctl web --origin https://tv.empresa.intranet --tls self-signed
-```
-
-O instalador não abre portas no firewall nem configura o DNS da rede.
-
-## Primeiro acesso por link
-
-No final da instalação em um terminal, o instalador mostra um link exclusivo.
-Quem instala encaminha esse link ao responsável pela loja, que abre no navegador
-e escolhe **nome, usuário e senha**. O usuário não precisa entrar no servidor,
-consultar arquivos ou receber uma senha padrão.
-
-- O link vale por **24 horas**, sobrevive ao reinício e só pode ser usado uma vez.
-- A senha é definida pelo próprio responsável e armazenada com hash scrypt.
-- Depois da ativação, o primeiro acesso é encerrado definitivamente.
-- Instalações que já possuem contas mantêm seus usuários, senhas e sessões.
-- O token fica no fragmento do link (`#token=...`), não na URL enviada ao Nginx.
-
-Se o link expirar ou precisar ser substituído antes da ativação, o instalador
-pode emitir outro no servidor:
+Para substituir um link expirado antes da ativação:
 
 ```bash
 systvctl activation-link
 ```
 
-Isso invalida o link anterior. Não há emissão de links pela tela pública.
-O responsável recebe apenas o link: não precisa de acesso ao terminal.
-O link deve ser encaminhado por um canal privado para a pessoa que assumirá a
-administração; quem tiver o link válido poderá criar o primeiro administrador.
+A emissão invalida o link anterior. Em instalações sem terminal interativo, o link é salvo em `/etc/systv/activation-link.txt`, com leitura restrita ao root, e não é impresso nos logs de automação.
 
-Em execução sem terminal interativo, o instalador salva o link em
-`/etc/systv/activation-link.txt`, legível somente por root, e não o imprime em
-logs de automação. Um operador autorizado pode consultar esse arquivo ou emitir
-outro link para entregar ao usuário.
+Após entrar na administração, configure a identidade da empresa e cadastre os produtos. A primeira TV está disponível em:
+
+```text
+https://SEU-SERVIDOR/tv?screen=tv01
+```
+
+O catálogo de exibição é público para os dispositivos que alcançam o servidor. A edição exige autenticação e as permissões correspondentes. Para registrar a presença online de uma TV, autorize o navegador por uma sessão com permissão para aquela tela.
+
+## HTTPS e certificados
+
+HTTPS é obrigatório para acesso de produção pela rede. Por padrão, o instalador gera um certificado autoassinado, adequado ao uso interno quando a confiança é configurada nos dispositivos clientes.
+
+| Modo | Aplicação | Parâmetros |
+| --- | --- | --- |
+| Autoassinado | Rede interna sem autoridade certificadora própria | `--tls self-signed` |
+| Certificado fornecido | Certificado corporativo ou emitido externamente | `--tls provided --tls-cert /root/fullchain.pem --tls-key /root/server.key` |
+| Let's Encrypt | Domínio público com validação HTTP-01 e porta 80 acessível externamente | `--tls letsencrypt --email admin@exemplo.com.br` |
+| HTTP em loopback | Testes locais no próprio servidor | `--origin http://127.0.0.1 --tls none` |
+
+O certificado autoassinado precisa ser importado como confiável nos computadores e TVs. Sem essa etapa, os navegadores apresentam um alerta de segurança. Let's Encrypt não emite certificados para nomes internos como `.intranet` e `.local`.
+
+Para alterar a configuração de um servidor instalado:
+
+```bash
+systvctl web --origin https://srv-systv.empresa.intranet --tls self-signed
+```
+
+Consulte o [guia de implantação](docs/debian-13.md) para certificados corporativos, emissão externa por DNS-01 e recuperação de instalações interrompidas.
 
 ## Operação
 
-Depois de ativar, entre no painel com o usuário e a senha escolhidos. Cadastre
-empresa e produtos; o link da primeira TV é `/tv?screen=tv01`.
+Execute os comandos administrativos como `root`:
 
-```bash
-systvctl doctor
-systvctl version
-systvctl backup
-systvctl update
-systvctl rollback
-journalctl -u systv -f
-```
+| Comando | Finalidade |
+| --- | --- |
+| `systvctl doctor` | Verificar serviços, banco de dados, HTTPS e agendamento de backup |
+| `systvctl version` | Consultar a versão instalada e o runtime Node.js |
+| `systvctl backup` | Criar backup do banco e das configurações |
+| `systvctl update` | Instalar a última release estável |
+| `systvctl update --version vX.Y.Z` | Atualizar para uma versão específica |
+| `systvctl rollback` | Reativar a release anterior |
+| `systvctl web` | Ajustar URL e certificado de acesso |
+| `systvctl server` | Reaplicar a preparação do Debian |
+| `journalctl -u systv -f` | Acompanhar os logs da aplicação |
 
-Em servidor já instalado, `systvctl update` preserva as contas e não reabre a
-ativação. Para esquecimento de senha, use a recuperação por e-mail configurado.
-O link inicial não serve para substituir um administrador existente.
+Os backups ficam em `/var/backups/systv`. O instalador habilita o agendamento diário; o procedimento de restauração está no [guia de implantação](docs/debian-13.md).
 
-[Guia de produção, certificados, backup e recuperação](docs/debian-13.md).
-[Revisão da exposição pública de segredos](docs/security-review.md).
-[Documentação funcional e desenvolvimento](docs/development.md).
+As atualizações preservam contas, catálogo e configurações e não reabrem a ativação inicial. A preparação completa de SSH e do root é aplicada na instalação inicial ou por `systvctl server`, não em atualizações comuns.
 
-## Releases e verificação
+**Rollback de código não desfaz migrações do banco.** Consulte os procedimentos de backup e recuperação antes de reverter uma implantação.
 
-Tags estáveis: `vX.Y.Z`. Cada release contém `install.sh`,
-`systv-vX.Y.Z.tar.gz` e `SHA256SUMS`. O pacote é reproduzível e exclui DDEV,
-dependências locais, testes, bancos, certificados, backups e `.env`.
-A CI executa Gitleaks em todo o histórico e testa a aplicação e o instalador
-em Debian 13 descartável com systemd real, tanto por HTTP quanto por HTTPS local.
+## Segurança
 
-## Segurança na versão 2.6.0
+A instalação e a aplicação incluem:
 
-Veja as [correções e o roteiro de testes](docs/security-hardening.md). O acesso de produção
-pela rede passa a exigir HTTPS. A presença online das TVs exige autorização
-inicial do navegador por uma sessão com permissão para aquela TV.
+- SSH somente por chave pública, com configuração validada antes de entrar em vigor.
+- Aplicação e MariaDB vinculados ao loopback; Nginx como ponto de acesso HTTP/HTTPS.
+- Serviço da aplicação executado como usuário `systv`, sem permissão de escrita sobre código, runtime ou configurações.
+- Senhas com hash scrypt, sessões persistentes e cookies `HttpOnly`, `SameSite=Strict` e `Secure` em HTTPS.
+- Limitação de requisições e tentativas de autenticação, validação de origem e cabeçalhos de segurança.
+- Gravação atômica dos arquivos systemd, verificação do Node extraído e sincronização em disco antes da conclusão da instalação.
+
+A proteção da rede, as regras de firewall, a confiança dos certificados nos clientes e a integridade do armazenamento do hipervisor fazem parte da administração do ambiente.
+
+Detalhes técnicos e limites das validações estão na [documentação de segurança](docs/security-hardening.md) e na [auditoria de segurança](docs/security-audit-2026-10-29.md).
+
+## Documentação
+
+| Referência | Conteúdo |
+| --- | --- |
+| [Implantação no Debian 13](docs/debian-13.md) | Instalação, certificados, atualização, backup e recuperação |
+| [Desenvolvimento e funcionamento](docs/development.md) | Ambiente local, arquitetura, usuários, permissões e regras do sistema |
+| [Diretrizes de interface](docs/layout.md) | Padrões compartilhados de layout e componentes |
+| [Segurança](docs/security-hardening.md) | Controles implementados e escopo dos testes |
+| [Revisão de exposição de segredos](docs/security-review.md) | Verificações de arquivos e informações públicas |
+| [Histórico de versões](CHANGELOG.md) | Alterações por release |
+
+## Desenvolvimento e distribuição
+
+A aplicação utiliza Node.js 24, MariaDB e JavaScript no navegador. O ambiente local com DDEV e os comandos de desenvolvimento estão descritos no [guia de desenvolvimento](docs/development.md).
+
+As releases seguem o formato `vX.Y.Z` e disponibilizam `install.sh`, `systv-vX.Y.Z.tar.gz` e `SHA256SUMS`. O pacote é reproduzível e exclui ambientes locais, testes, bancos de dados, certificados, backups e arquivos `.env`.
+
+A integração contínua verifica sintaxe, dependências, segredos no histórico e testes da aplicação, além de instalação, atualização, rollback e recuperação em Debian 13 com systemd, por HTTP local e HTTPS.
