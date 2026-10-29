@@ -43,7 +43,7 @@ const server = http.createServer(async (req, res) => {
     if (path === '/api/state') return json(res, state);
     if (path === '/api/session') return json(res, { authenticated: !req.headers.cookie?.includes('layout-logged=no'), user: req.headers.cookie?.includes('layout-logged=no') ? null : user });
     if (path === '/api/users') return json(res, users);
-    if (path === '/api/version') return json(res, { current: '2.6.0', latest: '2.6.1', status: 'checked', checked_at: new Date().toISOString(), update_available: true, release_url: 'https://github.com/mk-tecnologia/systv/releases' });
+    if (path === '/api/version') return json(res, { current: '2.7.0', latest: '2.7.1', status: 'checked', checked_at: new Date().toISOString(), update_available: true, release_url: 'https://github.com/mk-tecnologia/systv/releases' });
     if (path === '/api/screens/status') return json(res, state.screens.map((s, i) => ({ id: s.id, online: i === 0 })));
     if (path === '/api/account') return json(res, { ...user, mail_ready: true });
     if (path === '/api/mail-settings') return json(res, mail);

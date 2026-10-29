@@ -1,5 +1,16 @@
 # Histórico
 
+## 2.7.0
+
+- Adapta o perfil local do MKPABX ao SYSTV: hostname, domínio local em `/etc/hosts`, fuso horário e identificação da MK Tecnologia no console.
+- O assistente pede nome do servidor, domínio e fuso e sugere a URL HTTPS correspondente; instalações automatizadas aceitam `--hostname`, `--domain` e `--timezone`.
+- Mostra sistema, kernel, IP dinâmico, versão ativa e URL do painel antes do login, além de identificação no MOTD.
+- Mascara persistentemente o `systemd-ssh-generator`, corrigindo as tentativas repetidas de AF_VSOCK sem desativar o SSH TCP.
+- Configura o console para exibir erros do kernel, preservando warnings e informações nos logs.
+- Acrescenta `systvctl server`, snapshots privados e recuperação em erro, aplicação idempotente e atualização do banner ao trocar a origem web ou a versão ativa.
+- Preserva sessões abertas, política SSH, firewall, IP, gateway e DNS da rede.
+
+
 ## 2.6.0
 
 - Corrige as cotas de autenticação atrás do Nginx, com identificação confiável do cliente e limites por IP, conta e escopo global.

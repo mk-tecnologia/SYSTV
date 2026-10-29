@@ -28,6 +28,7 @@ jobs:
       - run: bash -n install.sh deploy/debian/*.sh deploy/debian/systvctl tests/deploy/*.sh
       - run: shellcheck install.sh deploy/debian/*.sh deploy/debian/systvctl tests/deploy/*.sh
       - run: python3 tests/release.test.py
+      - run: python3 tests/server-profile.test.py
       - run: npm test
         env:
           DB_HOST: 127.0.0.1
@@ -60,6 +61,7 @@ jobs:
           docker exec systv-debian mkdir -p /var/tmp/systv-source
           docker cp dist/systv-v$(cat VERSION).tar.gz systv-debian:/var/tmp/systv.tar.gz
           docker exec systv-debian tar -xzf /var/tmp/systv.tar.gz -C /var/tmp/systv-source
+          docker cp tests/deploy/server-profile-smoke.sh systv-debian:/var/tmp/server-profile-smoke.sh
           docker cp tests/deploy/smoke.sh systv-debian:/var/tmp/smoke.sh
           docker cp tests/deploy/web-smoke.sh systv-debian:/var/tmp/web-smoke.sh
           docker cp tests/deploy/security-smoke.sh systv-debian:/var/tmp/security-smoke.sh
@@ -86,6 +88,7 @@ jobs:
           docker exec -e SYSTV_TEST_TRANSPORT=${{ matrix.transport }} systv-debian bash /var/tmp/smoke.sh
           docker exec systv-debian bash /var/tmp/security-smoke.sh
           docker exec systv-debian bash /var/tmp/legacy-runtime-smoke.sh
+          docker exec systv-debian bash /var/tmp/server-profile-smoke.sh
       - name: Diagnóstico em falha
         if: failure()
         run: |

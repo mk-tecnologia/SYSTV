@@ -100,6 +100,9 @@ case $TLS_MODE in
 esac
 # Snapshot privado antes de alterar qualquer arquivo da instalação.
 SNAPSHOT_FILES=(etc/systv)
+for banner in etc/issue etc/motd; do
+  [[ ! -f /$banner ]] || SNAPSHOT_FILES+=("$banner")
+done
 HAD_LIMITS=false
 if [[ -f /etc/nginx/conf.d/systv-limits.conf ]]; then
   HAD_LIMITS=true; SNAPSHOT_FILES+=(etc/nginx/conf.d/systv-limits.conf)
@@ -241,6 +244,7 @@ if [[ $SCHEME == https ]]; then
 fi
 curl --fail --silent --show-error --noproxy '*' "${CURL_ARGS[@]}" --resolve "$SITE_HOST:$PORT:127.0.0.1" "$ORIGIN/api/health" >/dev/null
 printf '%s\n' "$TLS_MODE" > /etc/systv/web-mode
+python3 "$SCRIPT_DIR/configure-server.py" --refresh
 trap - ERR
 printf '\nAcesso configurado: %s\nModo: %s\nSnapshot anterior: %s\n' "$ORIGIN" "$TLS_MODE" "$SNAPSHOT"
 if [[ $TLS_MODE == self-signed ]]; then
