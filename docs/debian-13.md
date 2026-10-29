@@ -336,65 +336,60 @@ sessões administrativas. Saia das sessões que não devem autorizar novamente.
 O catálogo público permanece apropriado à exibição; restrinja a rede caso seus
 preços não devam ser consultados externamente.
 
-## Perfil local do servidor e identificação do console (2.7.0)
+## Preparação Debian baseada no SCRIPTS-INI (2.7.1)
 
-O instalador adapta a configuração de identidade do MKPABX ao SYSTV. O assistente
-pergunta hostname curto (padrão `srv-systv`), domínio (padrão `mk.intranet`), fuso
-(padrão `America/Sao_Paulo`) e sugere `https://hostname.dominio` para o painel.
-Também é possível instalar sem interação:
+A instalação inicial incorpora o perfil Debian de
+[mk-tecnologia/SCRIPTS-INI v1.4.8](https://github.com/mk-tecnologia/SCRIPTS-INI/blob/v1.4.8/setup-debian13.sh).
+Não baixa nem executa uma referência mutável durante a instalação.
+
+Além da instalação do SYSTV, aplica:
+
+- Pacotes `vim`, `qemu-guest-agent` e `fastfetch`, com o agente QEMU habilitado.
+- A chave pública `marcos@mktecnologia.net.br` do script de referência no root,
+  preservando as chaves existentes. Desativa senha e autenticação interativa SSH,
+  habilita chave pública e usa `PermitRootLogin prohibit-password`.
+- Validação `sshd -t` e `sshd -T` antes de reiniciar o SSH; restaura a configuração
+  anterior se a validação falhar. Blocos `Match` existentes são preservados.
+- MOTD dinâmico com fastfetch e `/etc/motd` vazio.
+- Banner MKTECNOLOGIA original em `/etc/issue`, com sistema, kernel, hostname e
+  IPv4 dinâmico da interface escolhida; protege o arquivo com `chattr +i`.
+- Aliases do root e domínio do kernel, conforme o script de referência.
+- `systemd.ssh_auto=no` em `/etc/default/grub`, seguido de `update-grub`.
+  É necessário reiniciar o servidor para aplicar esse parâmetro no boot.
+
+Mantém o hostname, FQDN local em `/etc/hosts` e fuso oferecidos pelo instalador.
+O perfil também mantém o generator SSH mascarado para impedir as mensagens
+AF_VSOCK imediatamente, antes do próximo boot. Não altera IP, gateway ou DNS.
+Não aplica o antigo ajuste de `kernel.printk` para ocultar mensagens do console.
 
 ```bash
 bash /tmp/systv-install.sh --origin https://srv-systv.mk.intranet \
-  --hostname srv-systv --domain mk.intranet --timezone America/Sao_Paulo
+  --hostname srv-systv --domain mk.intranet --timezone America/Sao_Paulo \
+  --interface ens18
 ```
 
-O hostname curto é configurado no Debian; `/etc/hosts` recebe o FQDN em
-`127.0.1.1`. Isso configura a resolução local da própria máquina. Os clientes
-continuam precisando de DNS ou hosts apontando para o IP real do servidor.
-Nas atualizações, hostname e fuso existentes são preservados quando não há
-parâmetros explícitos. Em nova instalação sem terminal, hostname/domínio são
-inferidos de uma origem com nome; uma origem por IP preserva o hostname atual.
+A interface pode ser informada com `--interface`. Em terminal, havendo várias
+interfaces sem seleção anterior, apresenta um menu. Com apenas uma interface,
+a seleção é automática; sem terminal, usa a rota padrão.
 
-Para configurar uma instalação já atualizada, sem reinstalar banco ou aplicação:
+Para aplicar a preparação numa instalação existente:
 
 ```bash
-systvctl server --hostname srv-systv --domain mk.intranet --timezone America/Sao_Paulo
-systvctl doctor
+systvctl server --domain mk.intranet --interface ens18
 ```
 
-O bootstrap também aceita `--configure-server` com essas opções, inclusive para
-aplicar o perfil a uma instalação anterior por meio do instalador novo.
-A origem do painel não é alterada por `systvctl server`: continue usando
-`systvctl web` para mudar URL/certificado. O banner acompanha essa alteração e
-mostra a versão realmente ativa, inclusive após rollback da aplicação.
+Atualizações comuns preservam SSH, MOTD e aliases, atualizando apenas a identidade
+já gerenciada. `systvctl web` mantém o banner original ao alterar a URL.
+Backups ficam em `/var/backups/systv/server-profile-*.tar.gz` (identidade/console)
+e `/var/backups/systv/debian-setup-*` (SSH, MOTD, bashrc e GRUB).
 
-Antes do login, `/etc/issue` mostra a marca MK Tecnologia, sistema, kernel,
-hostname, IPv4 da interface principal e URL do SYSTV. O endereço usa escapes do
-agetty e é consultado a cada apresentação do banner, sem gravar um IP fixo.
-`/etc/motd` identifica o sistema após o login. Agettys aguardando login recebem
-uma solicitação de redesenho; sessões já abertas não são encerradas.
+Em contêineres não há GRUB próprio: a etapa de bootloader e o atributo imutável
+são omitidos, assim como a aplicação de sysctl no kernel compartilhado. A
+validação de reboot, GRUB e agente QEMU ativo exige uma VM Debian.
 
-A mensagem `systemd-ssh-generator: Failed to query local AF_VSOCK CID` vem da
-autodetecção de sockets locais do systemd. O perfil instala o mesmo mecanismo
-usado no MKPABX: `/etc/systemd/system-generators/systemd-ssh-generator` aponta
-para `/dev/null`. Isso impede a execução desse generator no boot e em
-`daemon-reload`. Não modifica `sshd_config`, senhas, chaves ou o SSH TCP.
-
-O arquivo `/etc/sysctl.d/60-systv-console.conf` define `kernel.printk = 4 4 1 7`:
-erros continuam no console, e warnings/informações permanecem no journal/dmesg.
-Não são apagados registros nem alteradas políticas de firewall, IP, gateway,
-DNS ou bootloader. Em contêiner, o sysctl é instalado, mas não aplicado ao
-kernel compartilhado com o host. Em Debian/VM normal ele é aplicado na hora e
-novamente pelo systemd no boot.
-
-Antes de mudar arquivos, o perfil salva um snapshot privado em
-`/var/backups/systv/server-profile-*.tar.gz` e tenta restaurar o estado se houver
-erro. Reaplicar os mesmos parâmetros não duplica entradas nem reinicia serviços.
-O backup agendado mantém esses snapshots por 14 dias.
-
-Validação: testes automatizados de entrada, idempotência e recuperação; Debian 13
-com systemd, hostname, fuso, SSH TCP ativo e renderização real do banner por
-agetty em pseudoterminal. A instalação completa, certificados, atualização e
-rollback foram exercitados. O reboot de uma VM Proxmox e a aplicação do printk
-no kernel dessa VM precisam ser conferidos no destino; a VM das imagens não
-foi acessada ou modificada por esta revisão.
+Validação funcional local: instalação limpa do pacote em Debian 13 com systemd,
+serviços e saúde da aplicação, SSH efetivo, chave sem duplicação, pacotes, MOTD,
+aliases, reaplicação e renderização do banner pelo agetty em pseudoterminal.
+Os testes de GRUB usam arquivos temporários para verificar preservação dos
+argumentos, ausência de duplicação e rejeição de formato desconhecido.
+A aparência no console Proxmox e o reboot da VM ainda não foram validados.

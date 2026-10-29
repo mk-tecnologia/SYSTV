@@ -100,9 +100,7 @@ case $TLS_MODE in
 esac
 # Snapshot privado antes de alterar qualquer arquivo da instalação.
 SNAPSHOT_FILES=(etc/systv)
-for banner in etc/issue etc/motd; do
-  [[ ! -f /$banner ]] || SNAPSHOT_FILES+=("$banner")
-done
+# O banner original e o MOTD não dependem mais da URL do painel.
 HAD_LIMITS=false
 if [[ -f /etc/nginx/conf.d/systv-limits.conf ]]; then
   HAD_LIMITS=true; SNAPSHOT_FILES+=(etc/nginx/conf.d/systv-limits.conf)
