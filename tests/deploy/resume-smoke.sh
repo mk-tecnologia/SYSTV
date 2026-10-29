@@ -42,6 +42,7 @@ if bash deploy/debian/install.sh --update; then
   echo 'Migração inválida foi aceita.' >&2; exit 1
 fi
 [[ $(readlink -f /opt/systv/current) == "$OLD" ]]
-grep -q "SYSTV $(cat "$OLD/VERSION") =>" /etc/issue
+grep -q 'srv-systv.mk.intranet' /etc/issue
+grep -q 'marcos@mktecnologia.net.br' /etc/issue
 systvctl doctor
 echo 'Retomada sem alteração de credenciais e recuperação de atualização: OK'
