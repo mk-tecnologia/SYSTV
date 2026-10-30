@@ -1,5 +1,11 @@
 # Histórico
 
+## 2.7.3
+
+- Acrescenta a ação Excluir produto no editor aberto pela prévia da TV, com confirmação identificando produto e catálogo e limpeza da edição após a exclusão.
+- Mantém a mesma ação na lista, com verificação das permissões por TV na API.
+- Inclui a licença GPL v3 ou posterior e o README nos pacotes e nas instalações.
+
 ## 2.7.2
 
 - Publica os arquivos systemd por substituição atômica e confirma a gravação da release e das configurações em disco antes de concluir.

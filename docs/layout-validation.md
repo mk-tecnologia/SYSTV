@@ -27,3 +27,21 @@ visual completa de todas as páginas, diálogos e estados da versão 2.5.0.
 
 A versão 2.5.0 ainda não foi publicada nesta revisão. As mudanças locais não
 alteram a instalação 2.4.4 do servidor.
+
+
+## Exclusão de produtos — 2026-10-30
+
+Alteração: o editor de um produto existente mostra Excluir produto abaixo de
+Salvar e atualizar TV, reutilizando os controles e estados de perigo existentes.
+O cadastro de novo produto mantém a ação oculta. Nenhum CSS foi alterado.
+
+Validação funcional: `npm run check`, 33 testes de integração em banco temporário
+via `ddev test`, dois testes de empacotamento e `git diff --check` passaram.
+A API existente continua verificando a permissão sobre a TV na exclusão.
+No Safari, a confirmação identificou o produto e a TV; foi cancelada sem remover
+produtos. A exclusão completa pelo novo botão não foi executada no banco real.
+
+Validação visual: prévia fictícia no Safari, tema escuro, desktop de 1728 px e
+celular de 390 px. O botão ficou legível e acessível sob Salvar; o indicador da
+prévia mostrou excesso horizontal de 0 px nas duas larguras. A conferência de
+tablet e tema claro não foi concluída por falha do serviço de captura da UI.

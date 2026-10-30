@@ -188,6 +188,7 @@ function render() {
   for (const id of ['open-screen', 'sidebar-tv']) { $(id).href = url; $(id).hidden = !selected; }
   $('add-product').disabled = !selected;
   $('product-form').querySelectorAll('input, select, button').forEach(input => input.disabled = !selected);
+  $('delete-product').hidden = !state.products.some(product => product.id === Number($('product-form').elements.id.value));
   $('no-permissions').hidden = screens.length > 0;
   const products = screenProducts(selected);
   if (catalogScreen !== selected) { catalogScreen = selected; catalogPage = 0; resetProductEditor(); }
@@ -216,11 +217,8 @@ function render() {
     tr.children[4].replaceChildren(badge);
     const actions = document.createElement('td'); actions.dataset.label = 'Ações'; actions.setAttribute('role', 'cell');
     const buttons = document.createElement('div'); buttons.className = 'row-actions';
-    buttons.append(makeButton('Editar', () => openEditor(product)), makeButton('Excluir', async () => {
-      if (!confirm(`Excluir “${product.name}”?`)) return;
-      try { await api('products/' + product.id, 'DELETE'); notice('Produto excluído. TVs atualizadas.'); }
-      catch (error) { notice(error.message, true); }
-    }, true));
+    const remove = makeButton('Excluir produto ' + product.name, () => deleteProduct(product, remove), true);
+    buttons.append(makeButton('Editar', () => openEditor(product)), remove);
     actions.append(buttons); tr.append(actions); return tr;
   }));
   $('empty').hidden = visible.length > 0;
@@ -242,6 +240,19 @@ function render() {
   renderUnits();
   renderUnitOptions();
   if (section === 'users') renderUsers();
+}
+
+async function deleteProduct(product, button) {
+  const screen = state.screens.find(screen => screen.id === product.screen);
+  if (!confirm(`Excluir “${product.name}”? O produto será removido do catálogo da TV “${screen?.name || product.screen}”.`)) return;
+  button.disabled = true;
+  try {
+    await api('products/' + product.id, 'DELETE');
+    state = await api('state');
+    if (Number($('product-form').elements.id.value) === product.id) resetProductEditor();
+    render(); notice('Produto excluído. TV atualizada.');
+  } catch (error) { notice(error.message, true); }
+  finally { button.disabled = false; }
 }
 
 function openEditor(product) {
@@ -368,6 +379,10 @@ $('search').oninput = () => {
 $('view-preview').onclick = () => { catalogView = 'preview'; render(); };
 $('view-list').onclick = () => { catalogView = 'list'; render(); };
 $('add-product').onclick = () => openEditor();
+$('delete-product').onclick = () => {
+  const product = state.products.find(product => product.id === Number($('product-form').elements.id.value));
+  if (product) return deleteProduct(product, $('delete-product'));
+};
 $('close-editor').onclick = () => openEditor();
 $('product-form').addEventListener('input', () => { updateProductPage(); catalogPage = Math.max(0, productPage({screen: $('product-form').dataset.screen, id: Number($('product-form').elements.id.value) || undefined, position: Number($('product-form').elements.position.value)}) - 1); render(); });
 $('product-form').onsubmit = async event => {
@@ -636,6 +651,7 @@ function renderCatalogPreview(products, current, pages, screen, query) {
 function resetProductEditor() {
   const form = $('product-form'); form.reset(); form.dataset.screen = selected;
   form.elements.id.value = ''; form.elements.position.value = Math.max(-1, ...screenProducts(selected).map(product => product.position)) + 1;
+  $('delete-product').hidden = true;
   renderUnitOptions(); form.elements.unit.value = state.units.some(unit => unit.code === 'KG') ? 'KG' : state.units[0]?.code || '';
   $('editor-title').textContent = 'Novo produto';
   $('product-screen-context').textContent = 'TV: ' + (state.screens.find(screen => screen.id === selected)?.name || '');
