@@ -67,6 +67,7 @@ test('API com MariaDB real, múltiplas TVs e sessões persistentes', { timeout: 
       assert.equal((await fetch(base)).status, 200);
       assert.equal((await fetch(base + '/tv?screen=tv01')).status, 200);
       assert.equal((await fetch(base + '/tv-presence.js')).status, 200);
+      assert.equal((await fetch(base + '/tv-pagination.js')).status, 200);
       assert.deepEqual(await (await call('health')).json(), { status: 'ok', database: 'mariadb' });
       const initial = await (await call('state')).json(); assert.equal(initial.products.length, 24);
       assert.equal((await call('products', 'POST', {}, false)).status, 401);

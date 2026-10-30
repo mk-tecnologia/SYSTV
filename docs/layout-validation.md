@@ -193,3 +193,63 @@ Validação funcional, separada da visual:
   ao iniciar o controle nativo. Nenhuma aparência foi declarada validada com base
   somente na revisão de código ou nos testes de API.
 - Alterações continuam locais, sem publicação ou mudança na produção.
+
+## Balanceamento automático de páginas — 2026-10-30 (local)
+
+Validação funcional:
+
+- Módulo compartilhado por TV, prévia, abas, busca e indicação de página no editor.
+  Mantém a ordem, a quantidade mínima de páginas e diferença máxima de um produto
+  entre páginas. Capacidade de 34 produtos em duas colunas e 17 em uma coluna.
+- Casos explícitos: 35 → 18/17; 36 → 18/18; 69 → 23/23/23; 70 → 24/23/23;
+  em uma coluna, 18 → 9/9 e 35 → 12/12/11.
+- Testados totais de 0 a 300 nas duas capacidades: sem perda, duplicação ou troca
+  de ordem; identificação de página coerente e recálculo nas fronteiras de inclusão
+  e exclusão. Não foi alterada a ordenação persistida dos produtos.
+- 50 testes via `ddev test`, `npm run check`, dois testes de release e
+  `git diff --check` aprovados. Verificada entrega HTTP do novo módulo e inclusão
+  no pacote de produção.
+
+Validação visual:
+
+- Pendente: tentativa de controle do Chrome falhou ao iniciar. Não foram conferidos
+  visualmente troca de página, arraste, pesquisa ou layout após o balanceamento.
+- Fixture aceita `SYSTV_LAYOUT_PRODUCTS=35` (até 300) para reproduzir catálogos
+  maiores sem modificar dados reais. Nenhuma atualização de GitHub ou produção.
+
+### Revisão do limite: 16 linhas por coluna
+
+- Limite compartilhado `TV_MAX_ROWS=16`; capacidade horizontal de 32 produtos,
+  vertical de 16. Substitui o limite de 17 linhas/34 produtos da revisão anterior.
+- TV, painel, fronteiras de páginas e fallback CSS atualizados. O balanceamento
+  preserva a ordem; 33 produtos horizontais ficam em 17/16 produtos (até 9 linhas
+  por coluna), 64 em 32/32 e 65 em 22/22/21.
+- Testes de 0 a 300 produtos conferem explicitamente que nenhuma página ultrapassa
+  16 linhas por coluna. 50 testes via `ddev test`, sintaxe, dois testes de release,
+  parser CSS e diff aprovados.
+- Validação visual continua pendente pela indisponibilidade já registrada do
+  controle do navegador. Alteração local, sem atualização do GitHub ou produção.
+
+## Implantação local no servidor 192.168.160.18 — 2026-10-30
+
+- Pacote 2.7.7 gerado diretamente do workspace e transferido por SSH, sem commit,
+  tag, push ou publicação no GitHub. SHA-256 do pacote:
+  `068416211529cdde023e8750d0a5a82795f5b789bf457565c38e3b6c4e2a88eb`.
+- Aplicado pelo instalador em modo `--update`, executado por uma unidade temporária
+  do systemd. Backup: `/var/backups/systv/20261030T193506Z-3513`.
+- Release ativa: `/opt/systv/releases/v2.7.7-20261030T193502Z-3401`.
+  Anterior preservada: `/opt/systv/releases/v2.7.6-20261030T190834Z-2807`.
+- `systvctl doctor` aprovado: SYSTV, nginx, MariaDB e timer de backup ativos;
+  nginx válido; saúde local e HTTPS com certificado verificado respondendo.
+- HTTP 200 no painel, TV em modo prévia e scripts. Novo módulo entregue por HTTPS
+  confirma `TV_MAX_ROWS=16` e capacidade horizontal de 32 produtos.
+- Comparação antes/depois preservou os 60 produtos (incluindo preço, ordem e
+  destaque), 5 TVs e 2 usuários; sem entradas de erro do SYSTV após a atualização.
+- Isso é validação funcional da implantação, não validação visual. Navegadores
+  que já estavam abertos precisam recarregar para receber o novo JavaScript.
+
+### Aprovação para publicação da 2.7.7
+
+O usuário aprovou o resultado no servidor (“ficou legal”) e autorizou versionar
+esta mesma versão no GitHub. Isso registra a aprovação em uso real, sem ampliar
+as verificações automatizadas ou declarar testes visuais em outras resoluções.

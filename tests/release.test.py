@@ -23,7 +23,7 @@ class ProductionRelease(unittest.TestCase):
                              'deploy/debian/systv.service', 'deploy/debian/systvctl',
                              'deploy/debian/configure-server.sh', 'deploy/debian/configure-server.py',
                              'deploy/debian/console-logo.txt', 'deploy/debian/prepare-debian.sh', 'public/activate.html',
-                             'public/activate.js', 'public/tv-presence.js', 'database/migrations/012_screen_display_links.sql', 'scripts/activation-link.js', 'database/migrations/009_initial_activation.sql'} <= paths)
+                             'public/activate.js', 'public/tv-pagination.js', 'public/tv-presence.js', 'database/migrations/012_screen_display_links.sql', 'scripts/activation-link.js', 'database/migrations/009_initial_activation.sql'} <= paths)
             for name in paths:
                 parts = pathlib.PurePosixPath(name).parts
                 self.assertFalse({'.ddev', '.git', '.idea', 'data', 'backups', 'node_modules', 'tests'} & set(parts), name)

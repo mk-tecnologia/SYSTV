@@ -1,5 +1,9 @@
 # Histórico
 
+## 2.7.7
+
+- Balanceia automaticamente os produtos entre páginas, preservando a ordem e evitando uma última tela com poucos itens. TV, prévia, abas, busca e editor usam a mesma regra de divisão, limitada a 16 linhas por coluna (32 produtos em duas colunas ou 16 em uma).
+
 ## 2.7.6
 
 - Adiciona seis paletas de alto contraste para as TVs: Noturno, Bordô, Café, Gelo, Sálvia e Pêssego. As novas combinações de texto, ofertas e rodapé têm contraste mínimo de 7:1, com verificação automatizada.

@@ -120,6 +120,11 @@ menos 7:1 para texto/fundo, texto/linha, oferta/linha, rodapé/fundo e branco/ma
 A referência é o contraste reforçado da WCAG 2.2, critério 1.4.6:
 https://www.w3.org/WAI/WCAG22/Understanding/contrast-enhanced.html.
 Isso valida as combinações de cores, sem declarar conformidade AAA do sistema inteiro.
+A paginação usa `public/tv-pagination.js`, compartilhado entre a TV e o painel.
+Distribuir os produtos entre o menor número de páginas necessário, com diferença
+de no máximo um item entre páginas, preservando a ordem global. Respeitar a
+capacidade de 32 produtos em duas colunas e 16 em uma (máximo de 16 linhas por coluna). Prévia, abas, busca e
+indicação de página no editor devem seguir as mesmas fronteiras balanceadas.
 O botão Copiar link da TV entrega o endereço para exibição e monitoramento
 sem login no aparelho. Prévia da TV não altera a presença. A configuração oferece
 o endereço somente para leitura e renovação explícita com confirmação. Não

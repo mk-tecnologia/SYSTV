@@ -1,5 +1,6 @@
 import { createTVPresence } from './tv-presence.js';
 import { getTVPalette } from './tv-palettes.js';
+import { TV_MAX_ROWS, balancedPageRanges, pageProducts } from './tv-pagination.js';
 const $ = id => document.getElementById(id);
 const screen = new URLSearchParams(location.search).get('screen') || 'tv01';
 const previewMode = new URLSearchParams(location.search).get('preview') === '1';
@@ -35,11 +36,11 @@ function render() {
   $('message').textContent = state.settings.message;
   const products = state.products.filter(product => product.screen === screen);
   const count = columns();
-  const size = count * 17;
-  const pages = Math.max(1, Math.ceil(products.length / size));
+  const size = count * TV_MAX_ROWS;
+  const pages = balancedPageRanges(products.length, size).length;
   page %= pages;
   $('page').textContent = `${page + 1}/${pages}`;
-  const current = products.slice(page * size, (page + 1) * size);
+  const current = pageProducts(products, page, size);
   $('board').classList.toggle('is-empty', current.length === 0);
   $('board').style.setProperty('--columns', count);
   $('board').style.setProperty('--rows', Math.max(1, Math.ceil(current.length / count)));

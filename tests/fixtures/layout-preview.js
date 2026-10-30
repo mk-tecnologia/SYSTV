@@ -12,6 +12,10 @@ const state = {
   products: demoProducts.map((p, i) => ({ ...p, id: i + 1 })),
   units: [{ code: 'KG', name: 'Quilograma' }, { code: 'UN', name: 'Unidade' }, { code: 'CX', name: 'Caixa com produtos selecionados' }],
 };
+if (process.env.SYSTV_LAYOUT_PRODUCTS) {
+  const total = Math.min(300, Math.max(0, Number(process.env.SYSTV_LAYOUT_PRODUCTS) || 0));
+  state.products = Array.from({length:total}, (_,index) => ({...demoProducts[index % demoProducts.length], id:index+1, position:index, screen:'tv01'}));
+}
 const screenCount = Math.min(30, Math.max(2, Number(process.env.SYSTV_LAYOUT_SCREENS) || 2));
 if (screenCount > 2) {
   for (let i = 3; i <= screenCount; i++) state.screens.push({id: 'tv' + String(i).padStart(2, '0'), name: 'Setor ' + i, page_interval_seconds:15, color_scheme:'classic'});

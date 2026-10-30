@@ -439,7 +439,7 @@ select option { background: var(--surface); color: var(--text); }
 .tv-subtitle { font-size: clamp(9px, 1.15vw, 24px); letter-spacing: .08em; white-space: nowrap; }
 .tv-header #fullscreen { position: absolute; right: .15vw; top: .1vh; min-height: 0; padding: 3px; border: 0; background: transparent; color: var(--tv-muted, #e1ecef); opacity: .6; }
 #fullscreen .icon { width: 20px; height: 20px; }
-.board { display: grid; flex: 1; width: 100%; max-width: 100%; min-width: 0; min-height: 0; grid-template-columns: repeat(var(--columns, 2), minmax(0, 1fr)); grid-template-rows: repeat(var(--rows, 17), minmax(0, 8vh)); grid-auto-flow: column; align-content: start; gap: .6vh .5vw; padding: 0 .7vw; }
+.board { display: grid; flex: 1; width: 100%; max-width: 100%; min-width: 0; min-height: 0; grid-template-columns: repeat(var(--columns, 2), minmax(0, 1fr)); grid-template-rows: repeat(var(--rows, 16), minmax(0, 8vh)); grid-auto-flow: column; align-content: start; gap: .6vh .5vw; padding: 0 .7vw; }
 .board.is-empty { grid-template-rows: minmax(0, 1fr); }
 .price-row { display: flex; align-items: center; justify-content: space-between; gap: clamp(4px, 1vw, 20px); min-width: 0; max-width: 100%; min-height: 0; padding: 3px clamp(6px, 1.3vw, 32px); overflow: hidden; border-radius: var(--radius-small); background: var(--tv-row, #122b2a); color: var(--tv-text, #fff); }
 .price-row.highlighted { color: var(--tv-accent, #67f3df); }

@@ -16,7 +16,7 @@ const files = {
   '/activate': 'activate.html', '/activate.js': 'activate.js',
   '/': 'admin.html', '/admin': 'admin.html', '/tv': 'tv.html',
   '/security.js': 'security.js', '/tv-palettes.js': 'tv-palettes.js', '/theme.js': 'theme.js', '/icons.svg': 'icons.svg', '/style.css': 'style.css', '/admin.js': 'admin.js', '/tv.js': 'tv.js',
-  '/tv-connection.js': 'tv-connection.js', '/tv-presence.js': 'tv-presence.js',
+  '/tv-pagination.js': 'tv-pagination.js', '/tv-connection.js': 'tv-connection.js', '/tv-presence.js': 'tv-presence.js',
 };
 
 export async function createApp(db, config, dependencies = {}) {

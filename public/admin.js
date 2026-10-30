@@ -1,5 +1,6 @@
 import { createSecurityUI } from './security.js';
 import { TV_PALETTES, getTVPalette } from './tv-palettes.js';
+import { TV_PAGE_CAPACITY, balancedPageRanges, productPageIndex, pageProducts } from './tv-pagination.js';
 function makeIcon(name) {
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.setAttribute('class', 'icon'); svg.setAttribute('aria-hidden', 'true'); svg.setAttribute('focusable', 'false');
@@ -8,7 +9,6 @@ function makeIcon(name) {
 }
 function setButtonLabel(button, text, icon) { button.replaceChildren(makeIcon(icon), document.createTextNode(text)); }
 let catalogPage = 0, catalogView = 'preview', catalogScreen = '';
-const TV_PAGE_SIZE = 34;
 const pageLabel = page => 'Tela ' + String(page).padStart(2, '0');
 function screenProducts(id) {
   return state.products.filter(product => product.screen === id).sort((a, b) => a.position - b.position || a.id - b.id);
@@ -16,7 +16,7 @@ function screenProducts(id) {
 function productPage(product) {
   const products = screenProducts(product.screen).filter(item => item.id !== product.id);
   const index = Math.min(product.position, products.length);
-  return Math.floor(index / TV_PAGE_SIZE) + 1;
+  return productPageIndex(products.length + 1, index) + 1;
 }
 function updateProductPage() {
   if (!state) return;
@@ -191,15 +191,15 @@ function render() {
   $('no-permissions').hidden = screens.length > 0;
   const products = screenProducts(selected);
   if (catalogScreen !== selected) { catalogScreen = selected; catalogPage = 0; resetProductEditor(); }
-  const pages = Math.max(1, Math.ceil(products.length / TV_PAGE_SIZE));
+  const pages = balancedPageRanges(products.length).length;
   $('catalog-pages').hidden = !selectedScreen;
-  $('catalog-pages').textContent = pages > 1 ? `Catálogo dividido em ${pages} telas. Cada tela comporta até 34 produtos e a troca acontece a cada ${selectedScreen?.page_interval_seconds ?? 15} segundos. O próximo cadastro no final da lista será na ${pageLabel(Math.floor(products.length / TV_PAGE_SIZE) + 1)}.` : `Catálogo na Tela 01 · ${products.length}/34 produtos. Ao ultrapassar 34 produtos, a Tela 02 será criada automaticamente.`;
+  $('catalog-pages').textContent = pages > 1 ? `Catálogo balanceado em ${pages} telas (${balancedPageRanges(products.length).map(range => range.end - range.start).join(' / ')} produtos), preservando a ordem. Troca a cada ${selectedScreen?.page_interval_seconds ?? 15} segundos.` : `Catálogo na Tela 01 · ${products.length}/${TV_PAGE_CAPACITY} produtos. Ao criar outra tela, os produtos serão distribuídos de forma equilibrada.`;
   if ($('product-form').dataset.screen) updateProductPage();
   $('count').textContent = products.length;
   $('offers').textContent = products.filter(product => product.highlight).length;
   $('screens-count').textContent = screens.length;
   catalogPage = Math.min(catalogPage, Math.max(pages - 1, $('product-form').elements.name.value.trim() ? productPage({screen:selected,id:Number($('product-form').elements.id.value)||undefined,position:Number($('product-form').elements.position.value)}) - 1 : 0));
-  const currentProducts = products.slice(catalogPage * TV_PAGE_SIZE, (catalogPage + 1) * TV_PAGE_SIZE);
+  const currentProducts = pageProducts(products, catalogPage);
   const query = $('search').value.trim().toLocaleLowerCase();
   const visible = currentProducts.filter(product => product.name.toLocaleLowerCase().includes(query));
   renderCatalogPreview(products, currentProducts, pages, selectedScreen, query);
@@ -207,7 +207,7 @@ function render() {
     const tr = document.createElement('tr'); tr.setAttribute('role', 'row');
     tr.tabIndex = 0; tr.setAttribute('aria-label', `${product.name}. Alt e seta para cima ou para baixo para mover.`);
     bindProductReorder(tr, product);
-    const fields = [['Produto', product.name + ' · ' + pageLabel(Math.floor(products.indexOf(product) / TV_PAGE_SIZE) + 1)], ['Preço', 'R$ ' + money(product.price)], ['Unidade', product.unit], ['Ordem', product.position], ['Exibição na TV', product.highlight ? 'Em oferta' : 'Preço normal']];
+    const fields = [['Produto', product.name + ' · ' + pageLabel(productPageIndex(products.length, products.indexOf(product)) + 1)], ['Preço', 'R$ ' + money(product.price)], ['Unidade', product.unit], ['Ordem', product.position], ['Exibição na TV', product.highlight ? 'Em oferta' : 'Preço normal']];
     for (const [label, value] of fields) {
       const td = document.createElement('td'); td.setAttribute('role', 'cell'); td.dataset.label = label; td.textContent = value; tr.append(td);
     }
@@ -310,7 +310,7 @@ async function moveCatalogProduct(product, position) {
     const saved = state.products.find(item => item.id === product.id);
     const editing = state.products.find(item => item.id === Number($('product-form').elements.id.value));
     if (editing) $('product-form').elements.position.value = editing.position;
-    if (saved && selected === product.screen) catalogPage = Math.floor(saved.position / TV_PAGE_SIZE);
+    if (saved && selected === product.screen) catalogPage = productPageIndex(screenProducts(saved.screen).length, saved.position);
     notice('Ordem salva. TV atualizada.');
   } catch (error) { notice(error.message, true); }
   finally {
@@ -393,7 +393,7 @@ function openEditor(product) {
   $('editor-title').textContent = product ? 'Editar produto' : 'Novo produto';
   $('form-error').textContent = ''; updateProductPage();
   catalogView = 'preview';
-  catalogPage = product ? productPage(product) - 1 : Math.floor(screenProducts(selected).length / TV_PAGE_SIZE);
+  catalogPage = product ? productPage(product) - 1 : productPageIndex(screenProducts(selected).length + 1, screenProducts(selected).length);
   render();
   if (window.innerWidth < 1000) $('editor').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -496,7 +496,7 @@ document.querySelectorAll('[data-section]').forEach(button => button.onclick = a
 $('search').oninput = () => {
   const query = $('search').value.trim().toLocaleLowerCase();
   const index = screenProducts(selected).findIndex(product => product.name.toLocaleLowerCase().includes(query));
-  if (index >= 0) catalogPage = Math.floor(index / TV_PAGE_SIZE);
+  if (index >= 0) catalogPage = productPageIndex(screenProducts(selected).length, index);
   render();
 };
 $('view-preview').onclick = () => { catalogView = 'preview'; render(); };
@@ -522,12 +522,12 @@ $('product-form').onsubmit = async event => {
   if (f.id.value) product.id = Number(f.id.value);
   const submit = form.querySelector('button:not([type])'); submit.disabled = true;
   try {
-    const previousPages = Math.max(1, Math.ceil(screenProducts(product.screen).length / TV_PAGE_SIZE));
+    const previousPages = balancedPageRanges(screenProducts(product.screen).length).length;
     const result = await api('products', product.id ? 'PUT' : 'POST', product);
     state = await api('state'); render();
     const saved = state.products.find(item => item.id === (product.id || result.id));
     const page = saved ? productPage(saved) : productPage(product);
-    const pages = Math.max(1, Math.ceil(screenProducts(product.screen).length / TV_PAGE_SIZE));
+    const pages = balancedPageRanges(screenProducts(product.screen).length).length;
     const interval = state.screens.find(screen => screen.id === product.screen)?.page_interval_seconds ?? 15;
     resetProductEditor(); catalogPage = page - 1; render();
     notice(`Produto salvo na ${pageLabel(page)}. ` + (pages > previousPages ? `A ${pageLabel(pages)} foi criada automaticamente. Troca a cada ${interval} segundos.` : 'Atualização enviada à TV.'));
@@ -756,9 +756,9 @@ function renderCatalogPreview(products, current, pages, screen, query) {
     const previewProducts = products.filter(item => item.id !== editingId);
     previewProducts.splice(Math.min(Math.max(0, draft.position), previewProducts.length), 0, draft);
     products = previewProducts.map((item, position) => ({ ...item, position }));
-    pages = Math.max(1, Math.ceil(previewProducts.length / TV_PAGE_SIZE));
+    pages = balancedPageRanges(previewProducts.length).length;
     catalogPage = Math.min(catalogPage, pages - 1);
-    current = products.slice(catalogPage * TV_PAGE_SIZE, (catalogPage + 1) * TV_PAGE_SIZE);
+    current = pageProducts(products, catalogPage);
   }
   $('editor-title').textContent = editingId ? 'Editar produto' : 'Novo produto';
   const tabs = $('catalog-page-tabs');
@@ -767,7 +767,7 @@ function renderCatalogPreview(products, current, pages, screen, query) {
     tabs.dataset.signature = signature;
     tabs.replaceChildren(...Array.from({ length: pages }, (_, index) => {
       const button = document.createElement('button'); button.type = 'button';
-      const items = products.slice(index * TV_PAGE_SIZE, (index + 1) * TV_PAGE_SIZE);
+      const items = pageProducts(products, index);
       const matches = items.filter(product => product.name.toLocaleLowerCase().includes(query)).length;
       button.textContent = `${pageLabel(index + 1)} · ${query ? matches + ' encontrados' : items.length + ' produtos'}`;
       button.setAttribute('aria-pressed', String(index === catalogPage));
