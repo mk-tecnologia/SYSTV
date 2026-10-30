@@ -52,6 +52,7 @@
         <section class="card screen-picker" aria-label="Selecionar TV">
           <div class="screen-picker-controls"><label for="screen-options">TV em edição</label><select id="screen-options" aria-label="TV em edição"></select><span id="selected-presence" class="screen-presence" role="status"></span><button id="rename-screen" class="secondary" data-admin>Configurar TV</button><button class="secondary" id="add-screen" data-admin>Nova TV</button></div>
           <div class="stats" aria-label="Resumo da TV"><span><strong id="count">0</strong> produtos</span><span><strong id="offers">0</strong> ofertas</span><span><strong id="screens-count">0</strong> TVs disponíveis</span><span>Sincronização: <strong class="live" id="connection">Conectando…</strong></span></div>
+          <section id="screen-monitor" class="screen-monitor" aria-label="Status de todas as TVs"><div class="screen-monitor-heading"><h2>Status das TVs</h2><p id="screen-monitor-summary" role="status" aria-live="polite"></p></div><ul id="screen-monitor-list" class="screen-monitor-list" aria-label="TVs e conexão"></ul></section>
           <p id="no-permissions" class="permission-message" hidden>Você ainda não possui TVs autorizadas. Solicite acesso ao administrador.</p>
         </section>
         <section class="toolbar catalog-toolbar">

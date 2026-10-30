@@ -55,7 +55,8 @@ function notice(message, error = false) {
 }
 
 function setUser(user) {
-  if (JSON.stringify([currentUser?.id,currentUser?.role,currentUser?.screens]) !== JSON.stringify([user?.id,user?.role,user?.screens])) {
+  const accessChanged = JSON.stringify([currentUser?.id,currentUser?.role,currentUser?.screens]) !== JSON.stringify([user?.id,user?.role,user?.screens]);
+  if (accessChanged) {
     displayLinkEpoch++; displayLinks.clear();
     for (const id of ['open-screen','sidebar-tv']) $(id).removeAttribute('href');
   }
@@ -66,7 +67,7 @@ function setUser(user) {
   $('page-heading').hidden = !user;
   if (user) $('workspace').before($('notice'));
   else $('login-form').before($('notice'));
-  screenPresence.clear();
+  if (accessChanged) screenPresence.clear();
   if (user) refreshPresence();
   $('login').hidden = Boolean(user);
   if (!user) api('activation/status').then(status => {
@@ -151,6 +152,16 @@ function renderScreenOptions(screens) {
   if (container.dataset.signature !== signature) {
     container.replaceChildren(...screens.map(screen => new Option(screen.name, screen.id)));
     container.dataset.signature = signature;
+    $('screen-monitor-list').replaceChildren(...screens.map(screen => {
+      const item = document.createElement('li');
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = 'secondary small screen-monitor-item'; button.dataset.screen = screen.id;
+      const name = document.createElement('strong'); name.textContent = screen.name;
+      const status = document.createElement('span'); status.className = 'screen-presence checking';
+      button.append(name, status);
+      button.onclick = () => { selected = screen.id; $('search').value = ''; render(); };
+      item.append(button); return item;
+    }));
   }
   container.value = selected;
   container.disabled = !screens.length;
@@ -641,6 +652,23 @@ function renderPresence() {
   badge.className = 'screen-presence ' + (known ? status.online ? 'online' : 'offline' : 'checking');
   badge.textContent = known ? status.online ? 'Online' + (status.connected_devices > 1 ? ' · ' + status.connected_devices : '') : 'Offline' : 'Verificando';
   badge.title = known ? status.online ? 'Dispositivo de exibição conectado. Prévias administrativas não contam como presença.' : 'Nenhum dispositivo respondeu nos últimos 45 segundos. Use Copiar link da TV para configurar a exibição.' : 'Aguardando confirmação do servidor.';
+  const screens = availableScreens();
+  $('screen-monitor').hidden = !screens.length;
+  const online = screens.filter(screen => screenPresence.get(screen.id)?.online === true).length;
+  const offline = screens.filter(screen => screenPresence.get(screen.id)?.online === false).length;
+  const unknown = screens.length - online - offline;
+  const summary = `${online} online · ${offline} offline` + (unknown ? ` · ${unknown} sem confirmação` : '');
+  if ($('screen-monitor-summary').textContent !== summary) $('screen-monitor-summary').textContent = summary;
+  for (const button of $('screen-monitor-list').querySelectorAll('button')) {
+    const presence = screenPresence.get(button.dataset.screen);
+    const known = typeof presence?.online === 'boolean';
+    const status = button.querySelector('.screen-presence');
+    const label = known ? presence.online ? 'Online' : 'Offline' : 'Sem confirmação';
+    status.className = 'screen-presence ' + (known ? presence.online ? 'online' : 'offline' : 'checking');
+    if (status.textContent !== label) status.textContent = label;
+    button.setAttribute('aria-pressed', String(button.dataset.screen === selected));
+    button.title = 'Editar ' + button.querySelector('strong').textContent + ' · ' + label;
+  }
   for (const option of $('screen-options').options) {
     const screen = state?.screens.find(screen => screen.id === option.value);
     const presence = screenPresence.get(option.value);

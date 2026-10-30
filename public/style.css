@@ -200,6 +200,15 @@ td:first-child { font-weight: 600; }
 .screen-picker-controls { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-3); }
 .screen-picker-controls > label { flex: 0 0 auto; }
 .screen-picker-controls > select { flex: 1; width: auto; min-width: min(260px, 100%); }
+.screen-monitor { margin-top: var(--space-3); padding-top: var(--space-3); border-top: 1px solid var(--line); }
+.screen-monitor-heading { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-3); margin-bottom: var(--space-2); }
+.screen-monitor-heading h2 { font-size: 13px; }
+.screen-monitor-heading p { font-size: 12px; }
+.screen-monitor-list { display: flex; flex-wrap: wrap; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.screen-monitor-list li { min-width: 0; max-width: 100%; }
+.screen-monitor-item { justify-content: space-between; flex-wrap: wrap; text-align: left; gap: var(--space-2); }
+.screen-monitor-item strong { min-width: 0; overflow-wrap: anywhere; font-size: 12px; font-weight: 600; }
+.screen-monitor-item[aria-pressed='true'] { border-color: var(--accent); background: var(--accent-soft); }
 .palette-option:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: 3px; }
 #no-permissions { margin-top: var(--space-3); }
 .stats { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2) var(--space-6); margin-top: var(--space-3); color: var(--muted); font-size: 12px; }

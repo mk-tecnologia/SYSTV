@@ -1,5 +1,10 @@
 # Histórico
 
+## 2.7.5
+
+- Exibe o nome e o status de todas as TVs autorizadas em uma lista compacta sempre visível, com totais online/offline e seleção direta para edição. Falhas de consulta aparecem como sem confirmação.
+- Preserva o status durante a renovação normal da sessão, evitando oscilações desnecessárias nos indicadores.
+
 ## 2.7.4
 
 - Compacta o painel administrativo: seleção de TV sem cartões expansivos, indicadores em linha, cadastro e catálogo próximos do topo, ajuda recolhível e exclusão de TV na configuração. Preserva controles acessíveis e a rolagem normal de catálogos extensos.

@@ -75,15 +75,19 @@ acesso e os mesmos controles. Não acrescentar gradientes, raios ou sombras pró
 
 - Priorizar seleção de TV, cadastro e catálogo antes de textos explicativos.
 - A seleção usa um select nativo, com status nas opções e indicador da TV selecionada.
-  O número de TVs não aumenta a altura da página; conferir também com 30 TVs.
+  Abaixo, uma lista compacta sempre visível mostra nome e estado de todas as TVs
+  autorizadas, com totais online/offline e estado sem confirmação. Clicar em uma
+  TV abre sua edição; não é necessário selecioná-la para consultar o status.
+  A lista quebra linhas sem rolagem horizontal; conferir também com 30 TVs.
 - Indicadores ficam em uma linha flexível, sem cartões individuais. Cabeçalho e
   descrição da página podem compartilhar a linha e quebram naturalmente no celular.
 - Preço, unidade e ordem compartilham uma linha; mover produtos fica no cabeçalho
   do editor, com nomes acessíveis e dicas nos botões de seta.
 - Ajuda detalhada fica em um disclosure nativo, acessível por teclado. Excluir TV
   pertence à configuração da TV; excluir produto permanece no editor.
-- Em 1366 × 768, manter formulário e primeiras linhas do catálogo visíveis sem
-  rolagem inicial. Catálogos longos continuam usando a rolagem normal da página.
+- Em 1366 × 768, priorizar seleção, status das TVs e início do editor e do catálogo
+  na área inicial. A relação de TVs cresce por linhas compactas, sem esconder
+  dispositivos; catálogos longos continuam usando a rolagem normal da página.
   Não reduzir fontes de campos nem criar barras internas para forçar tudo a caber.
 
 ## Listas e responsividade

@@ -11,8 +11,9 @@ const state = {
   products: demoProducts.map((p, i) => ({ ...p, id: i + 1 })),
   units: [{ code: 'KG', name: 'Quilograma' }, { code: 'UN', name: 'Unidade' }, { code: 'CX', name: 'Caixa com produtos selecionados' }],
 };
-if (process.env.SYSTV_LAYOUT_SCREENS === '30') {
-  for (let i = 3; i <= 30; i++) state.screens.push({id: 'tv' + String(i).padStart(2, '0'), name: 'Setor ' + i, page_interval_seconds:15, color_scheme:'classic'});
+const screenCount = Math.min(30, Math.max(2, Number(process.env.SYSTV_LAYOUT_SCREENS) || 2));
+if (screenCount > 2) {
+  for (let i = 3; i <= screenCount; i++) state.screens.push({id: 'tv' + String(i).padStart(2, '0'), name: 'Setor ' + i, page_interval_seconds:15, color_scheme:'classic'});
 }
 const users = [user, { ...user, id: 2, name: 'Equipe de atendimento e operação', username: 'atendimento', email: 'atendimento.interno@example.com', role: 'editor', screens: ['tv01', 'tv02'] }, { ...user, id: 3, name: 'Pessoa com nome extenso para conferência de layout', username: 'operacao.comercial', email: 'operacao.comercial.regional@example.com', role: 'editor', active: false }];
 const mail = { enabled: false, provider: 'custom', microsoft_account: 'business', host: 'smtp.example.com', port: 587, security: 'starttls', auth: 'password', username: '', from_name: 'SYSTV', from_email: 'systv@example.com', client_id: '', tenant_id: '', stored_secrets: {} };

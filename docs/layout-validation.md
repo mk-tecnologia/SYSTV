@@ -129,3 +129,30 @@ Validação funcional, separada da visual:
 - `npm run check`, 45 testes via `ddev test`, dois testes de release e parser CSS
   aprovados. Não foi repetido o teste de arraste nesta revisão de layout.
 - Produção e GitHub não foram atualizados nesta etapa.
+
+## Status de todas as TVs — 2026-10-30 (local)
+
+Validação visual concluída no Chrome, com a prévia fictícia:
+
+- Quatro TVs em 1366 × 768: nomes, estados e totais visíveis sem abrir o seletor.
+  Trinta TVs também conferidas, distribuídas em linhas compactas sem ocultação.
+- Conferidos temas claro e escuro, tablet de 768 px e celular de 390 px; nomes
+  longos quebram linha. Excesso horizontal medido de 0 px nas três larguras.
+- A relação de status usa espaço adicional: com quatro TVs, o catálogo começa
+  em y=432 px no notebook. Não se promete mais que todo o editor caiba sem rolagem.
+- Evidência visual local: `/private/tmp/systv-status-tvs.png` (dados fictícios).
+
+Validação funcional, separada da visual:
+
+- Clicar na etiqueta da TV offline altera o catálogo e a seleção, preservando
+  todos os indicadores visíveis. Catálogo vazio exibido corretamente.
+- Interrompido apenas o servidor da prévia local: os quatro estados mudaram para
+  “Sem confirmação” e o resumo passou a 0 online, 0 offline, 4 sem confirmação.
+  Ao restaurar a prévia, voltaram automaticamente a 1 online e 3 offline, sem
+  recarregar a página. Não foram desligadas TVs nem serviços de produção.
+- `npm run check`, 45 testes via `ddev test`, dois testes de release, parser CSS
+  e `git diff --check` aprovados na implementação. Nenhuma alteração de código
+  adicional foi necessária após a conferência no Chrome.
+- A conexão do Chrome, inicialmente indisponível, foi restabelecida após o usuário
+  habilitá-la. Conferência visual concluída; bloqueio anterior resolvido.
+- GitHub e produção continuam na versão 2.7.4 publicada anteriormente.
