@@ -126,6 +126,7 @@ export async function createApp(db, config, dependencies = {}) {
         else if (/^\/api\/screens\/[^/]+$/.test(route) && method === 'PUT') id = await repository.renameScreen(route.split('/').pop(), await readBody(req), user);
         else if (/^\/api\/screens\/[^/]+$/.test(route) && method === 'DELETE') await repository.deleteScreen(route.split('/').pop(), user);
         else if (route === '/api/products' && ['POST', 'PUT'].includes(method)) id = await repository.saveProduct(await readBody(req), method === 'PUT', user);
+        else if (/^\/api\/products\/[^/]+\/position$/.test(route) && method === 'PUT') await repository.moveProduct(route.split('/')[3], await readBody(req), user);
         else if (/^\/api\/products\/[^/]+$/.test(route) && method === 'DELETE') await repository.deleteProduct(route.split('/').pop(), user);
         else throw new HttpError(404, 'Rota não encontrada.');
         await events.refresh();

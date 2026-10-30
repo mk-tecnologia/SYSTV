@@ -58,7 +58,7 @@ test('API com MariaDB real, múltiplas TVs e sessões persistentes', { timeout: 
     await admin.query(`CREATE DATABASE ${admin.escapeId(name)} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
     db = createDatabase({ ...config.database, database: name, user: process.env.TEST_DB_USER || 'root', password: process.env.TEST_DB_PASSWORD || 'root' });
     await migrate(db); await migrate(db);
-    assert.equal((await db.query('SELECT * FROM schema_migrations')).length, 10);
+    assert.equal((await db.query('SELECT * FROM schema_migrations')).length, 11);
     assert.equal(await seed(db), true); assert.equal(await seed(db), false);
     await db.close(); db = undefined;
     await start();
@@ -76,6 +76,90 @@ test('API com MariaDB real, múltiplas TVs e sessões persistentes', { timeout: 
       const sessions = await db.query('SELECT token_hash FROM sessions');
       assert.notEqual(sessions[0].token_hash, cookie.slice(8));
       assert.equal((await (await call('session')).json()).authenticated, true);
+    });
+
+    await t.test('novo administrador consegue entrar e acessar a administração', async () => {
+      const input = { name: 'Segundo administrador', username: 'Admin.Teste', password: 'Teste-á_10:seguro', role: 'admin', active: true, screens: [] };
+      const created = await call('users', 'POST', input);
+      assert.equal(created.status, 200);
+      const { id } = await created.json();
+      const login = await call('login', 'POST', { username: input.username, password: input.password }, false);
+      assert.equal(login.status, 200);
+      const newCookie = login.headers.get('set-cookie').split(';')[0];
+      const session = await (await call('session', 'GET', undefined, false, { Cookie: newCookie })).json();
+      assert.equal(session.authenticated, true);
+      assert.equal(session.user.id, id);
+      assert.equal(session.user.role, 'admin');
+      assert.equal((await call('users', 'GET', undefined, false, { Cookie: newCookie })).status, 200);
+      assert.equal((await call('users/' + id, 'DELETE')).status, 200);
+      assert.equal((await (await call('session', 'GET', undefined, false, { Cookie: newCookie })).json()).authenticated, false);
+    });
+
+    await t.test('ordem única por TV ao inserir, mover, excluir e salvar simultaneamente', async () => {
+      const screen = (await (await call('screens', 'POST', { name: 'Catálogo de ordenação' })).json()).id;
+      const other = (await (await call('screens', 'POST', { name: 'Catálogo de destino' })).json()).id;
+      const data = (name, position, screenId = screen) => ({ name, position, screen: screenId, price: 100, unit: 'UN', highlight: false });
+      const add = async (name, position) => {
+        const response = await call('products', 'POST', data(name, position));
+        assert.equal(response.status, 200);
+        return (await response.json()).id;
+      };
+      const ordered = async (screenId = screen) => {
+        const rows = (await (await call('state')).json()).products.filter(p => p.screen === screenId).sort((a,b) => a.position-b.position);
+        assert.deepEqual(rows.map(p => p.position), rows.map((_,i) => i));
+        return rows.map(p => p.id);
+      };
+      const a = await add('A', 100), b = await add('B', 100), c = await add('C', 100);
+      assert.deepEqual(await ordered(), [a,b,c]);
+      assert.equal((await call('products', 'PUT', { ...data('C',0), id:c })).status, 200);
+      assert.deepEqual(await ordered(), [c,a,b]);
+      assert.equal((await call('products', 'PUT', { ...data('C',2), id:c })).status, 200);
+      assert.deepEqual(await ordered(), [a,b,c]);
+      const d = await add('D', 1);
+      assert.deepEqual(await ordered(), [a,d,b,c]);
+      const move = (id, position, extra = {}) => call('products/' + id + '/position', 'PUT', { screen, position, ...extra });
+      assert.equal((await move(c,0,{price:99999,name:'Não alterar'})).status,200);
+      assert.deepEqual(await ordered(), [c,a,d,b]);
+      const moved = (await (await call('state')).json()).products.find(p => p.id===c);
+      assert.equal(moved.price,100); assert.equal(moved.name,'C');
+      assert.equal((await move(c,1,{screen:other})).status,409);
+      assert.deepEqual(await ordered(), [c,a,d,b]);
+      assert.equal((await move(c,-1)).status,400);
+      assert.equal((await call('products/' + c + '/position','PUT',{screen,position:1},false)).status,401);
+      assert.equal((await move(c,3)).status,200);
+      assert.deepEqual(await ordered(), [a,d,b,c]);
+      assert.equal((await call('products', 'PUT', { ...data('D',1), id:d, price:250 })).status, 200);
+      assert.deepEqual(await ordered(), [a,d,b,c]);
+      assert.equal((await call('products', 'PUT', { ...data('D',0,other.toUpperCase()), id:d })).status, 200);
+      assert.deepEqual(await ordered(), [a,b,c]);
+      assert.deepEqual(await ordered(other), [d]);
+      assert.equal((await call('products/' + b, 'DELETE')).status, 200);
+      assert.deepEqual(await ordered(), [a,c]);
+      const [e,f] = await Promise.all([add('E',1),add('F',1)]);
+      const result = await ordered();
+      assert.deepEqual([result[0],result[3]], [a,c]);
+      assert.deepEqual(new Set(result.slice(1,3)), new Set([e,f]));
+      await assert.rejects(db.query('UPDATE products SET position=0 WHERE id=?', [c]), error => error.code === 'ER_DUP_ENTRY');
+      assert.equal((await call('screens/' + screen, 'DELETE')).status, 200);
+      assert.equal((await call('screens/' + other, 'DELETE')).status, 200);
+    });
+
+    await t.test('migração resolve posições legadas repetidas preservando a sequência exibida', async () => {
+      const screen = (await (await call('screens', 'POST', { name: 'Catálogo legado' })).json()).id;
+      await db.query('ALTER TABLE products DROP INDEX products_screen_position_unique');
+      const ids = [];
+      for (const position of [2,2,4294967295]) {
+        const result = await db.query('INSERT INTO products (name,price,unit,screen,position) VALUES (?,?,?,?,?)', ['Legado',100,'UN',screen,position]);
+        ids.push(result.insertId);
+      }
+      await db.query('DELETE FROM schema_migrations WHERE version=?', ['011_unique_product_order.sql']);
+      await migrate(db);
+      const rows = await db.query('SELECT id,position FROM products WHERE screen=? ORDER BY position', [screen]);
+      assert.deepEqual(rows.map(p => p.id), ids);
+      assert.deepEqual(rows.map(p => p.position), [0,1,2]);
+      await migrate(db);
+      await assert.rejects(db.query('UPDATE products SET position=0 WHERE id=?', [ids[1]]), error => error.code === 'ER_DUP_ENTRY');
+      assert.equal((await call('screens/' + screen, 'DELETE')).status, 200);
     });
 
     const product = { name: "Coração d'água 🥩", price: 1234, unit: 'UN', screen: 'tv01', highlight: true, position: 100 };
@@ -209,6 +293,8 @@ test('API com MariaDB real, múltiplas TVs e sessões persistentes', { timeout: 
       assert.equal((await asEditor('products', 'PUT', { ...product, id: restrictedId })).status, 403);
       assert.equal((await asEditor('products', 'PUT', { ...product, id: productId, screen: extraScreen })).status, 403);
       assert.equal((await asEditor('products/' + restrictedId, 'DELETE')).status, 403);
+      assert.equal((await asEditor('products/' + restrictedId + '/position', 'PUT', { screen:extraScreen,position:0 })).status,403);
+      assert.equal((await asEditor('products/' + productId + '/position', 'PUT', { screen:'tv01',position:0 })).status,200);
       assert.equal((await asEditor('users')).status, 403);
       assert.equal((await asEditor('users', 'POST', { ...editor, username: 'newadmin', role: 'admin' })).status, 403);
       assert.equal((await asEditor('users/' + list.find(u => u.role === 'admin').id, 'DELETE')).status, 403);

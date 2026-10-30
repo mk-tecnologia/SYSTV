@@ -1,5 +1,13 @@
 # Histórico
 
+## 2.7.3
+
+- Permite arrastar produtos na prévia e na lista para reorganizar a TV, com salvamento automático, indicação de destino, botões Subir/Descer e atalhos de teclado. A movimentação altera somente a posição e respeita as permissões da TV.
+- Mantém posições únicas e sequenciais por TV: inserir ou mover um produto desloca os demais, e a exclusão fecha a sequência. Uma migração normaliza posições antigas e adiciona proteção no banco contra duplicidades.
+- Acrescenta a ação Excluir produto no editor aberto pela prévia da TV, com confirmação identificando produto e catálogo e limpeza da edição após a exclusão.
+- Mantém a mesma ação na lista, com verificação das permissões por TV na API.
+- Inclui a licença GPL v3 ou posterior e o README nos pacotes e nas instalações.
+
 ## 2.7.2
 
 - Publica os arquivos systemd por substituição atômica e confirma a gravação da release e das configurações em disco antes de concluir.

@@ -13,6 +13,23 @@ function validateInterval(value) {
   }
 }
 
+async function stageProductOrder(connection, screen) {
+  const [products] = await connection.execute('SELECT id,position FROM products WHERE screen=? ORDER BY position,id', [screen]);
+  if (products.length) {
+    const offset = products.at(-1).position + 2;
+    if (products.at(-1).position + offset > 4294967295) throw new HttpError(409, 'Não foi possível reorganizar este catálogo.');
+    // Libera as posições finais sem violar o índice único durante o movimento.
+    await connection.execute('UPDATE products SET position=position+? WHERE screen=? ORDER BY position DESC', [offset, screen]);
+  }
+  return products.map(product => product.id);
+}
+
+async function finishProductOrder(connection, ids, savedId) {
+  for (const [position, id] of ids.entries()) {
+    if (id !== savedId) await connection.execute('UPDATE products SET position=? WHERE id=?', [position, id]);
+  }
+}
+
 export function createRepository(db) {
   // Serializa alterações do catálogo para proteger a regra de manter ao menos uma TV.
   const write = work => db.transaction(async connection => {
@@ -126,19 +143,47 @@ export function createRepository(db) {
       return write(async connection => {
         const [[screen]] = await connection.execute('SELECT id FROM screens WHERE id=?', [input.screen]);
         if (!screen) throw new HttpError(400, 'TV não encontrada.');
-        await requireScreen(connection, actor, input.screen);
+        const targetScreen = screen.id;
+        await requireScreen(connection, actor, targetScreen);
         const [[unit]] = await connection.execute('SELECT code FROM units WHERE code=?', [input.unit]);
         if (!unit) throw new HttpError(400, 'Selecione uma unidade cadastrada.');
-        const values = [input.name.trim(), input.price, unit.code, input.screen, input.highlight ? 1 : 0, input.position];
+        let product;
         if (update) {
-          const [[product]] = await connection.execute('SELECT id,screen FROM products WHERE id=?', [id]);
+          [[product]] = await connection.execute('SELECT id,screen FROM products WHERE id=?', [id]);
           if (!product) throw new HttpError(404, 'Produto não encontrado.');
           await requireScreen(connection, actor, product.screen);
-          await connection.execute('UPDATE products SET name=?,price=?,unit=?,screen=?,highlight=?,position=? WHERE id=?', [...values, id]);
-          return id;
         }
-        const [result] = await connection.execute('INSERT INTO products (name,price,unit,screen,highlight,position) VALUES (?,?,?,?,?,?)', values);
-        return result.insertId;
+        const orders = new Map();
+        for (const screen of new Set([targetScreen, ...(product ? [product.screen] : [])])) {
+          orders.set(screen, (await stageProductOrder(connection, screen)).filter(productId => productId !== id));
+        }
+        const target = orders.get(targetScreen);
+        const position = Math.min(input.position, target.length);
+        const values = [input.name.trim(), input.price, unit.code, targetScreen, input.highlight ? 1 : 0, position];
+        let savedId = id;
+        if (update) await connection.execute('UPDATE products SET name=?,price=?,unit=?,screen=?,highlight=?,position=? WHERE id=?', [...values, id]);
+        else {
+          const [result] = await connection.execute('INSERT INTO products (name,price,unit,screen,highlight,position) VALUES (?,?,?,?,?,?)', values);
+          savedId = result.insertId;
+        }
+        target.splice(position, 0, savedId);
+        for (const ids of orders.values()) await finishProductOrder(connection, ids, savedId);
+        return savedId;
+      });
+    },
+    async moveProduct(value, input, actor) {
+      const id = validId(value);
+      if (!Number.isSafeInteger(input.position) || input.position < 0 || input.position > 4294967295 || !validText(input.screen, 32)) {
+        throw new HttpError(400, 'Informe uma posição válida para o produto.');
+      }
+      await write(async connection => {
+        const [[product]] = await connection.execute('SELECT screen FROM products WHERE id=?', [id]);
+        if (!product) throw new HttpError(404, 'Produto não encontrado.');
+        await requireScreen(connection, actor, product.screen);
+        if (product.screen !== input.screen) throw new HttpError(409, 'O produto mudou de TV. Atualize o catálogo e tente novamente.');
+        const ids = (await stageProductOrder(connection, product.screen)).filter(productId => productId !== id);
+        ids.splice(Math.min(input.position, ids.length), 0, id);
+        await finishProductOrder(connection, ids);
       });
     },
     async deleteProduct(value, actor) {
@@ -149,6 +194,7 @@ export function createRepository(db) {
         await requireScreen(connection, actor, product.screen);
         const [result] = await connection.execute('DELETE FROM products WHERE id=?', [id]);
         if (!result.affectedRows) throw new HttpError(404, 'Produto não encontrado.');
+        await finishProductOrder(connection, await stageProductOrder(connection, product.screen));
       });
     },
   };
