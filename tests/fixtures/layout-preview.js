@@ -11,6 +11,9 @@ const state = {
   products: demoProducts.map((p, i) => ({ ...p, id: i + 1 })),
   units: [{ code: 'KG', name: 'Quilograma' }, { code: 'UN', name: 'Unidade' }, { code: 'CX', name: 'Caixa com produtos selecionados' }],
 };
+if (process.env.SYSTV_LAYOUT_SCREENS === '30') {
+  for (let i = 3; i <= 30; i++) state.screens.push({id: 'tv' + String(i).padStart(2, '0'), name: 'Setor ' + i, page_interval_seconds:15, color_scheme:'classic'});
+}
 const users = [user, { ...user, id: 2, name: 'Equipe de atendimento e operação', username: 'atendimento', email: 'atendimento.interno@example.com', role: 'editor', screens: ['tv01', 'tv02'] }, { ...user, id: 3, name: 'Pessoa com nome extenso para conferência de layout', username: 'operacao.comercial', email: 'operacao.comercial.regional@example.com', role: 'editor', active: false }];
 const mail = { enabled: false, provider: 'custom', microsoft_account: 'business', host: 'smtp.example.com', port: 587, security: 'starttls', auth: 'password', username: '', from_name: 'SYSTV', from_email: 'systv@example.com', client_id: '', tenant_id: '', stored_secrets: {} };
 const files = { '/': 'admin.html', '/admin': 'admin.html', '/activate': 'activate.html', '/tv': 'tv.html' };
@@ -21,7 +24,11 @@ setInterval(() => {
  const width = document.documentElement.clientWidth;
  const overflow = Math.max(0, document.documentElement.scrollWidth - width);
  const tables = [...document.querySelectorAll('.table-wrap')].filter(e => e.getClientRects().length).map(e => Math.max(0,e.scrollWidth - e.clientWidth));
- badge.textContent = 'PRÉVIA FICTÍCIA | largura: ' + width + 'px | excesso horizontal: ' + overflow + 'px | tabelas: ' + (tables.join(',') || '0') + 'px';
+ const workspace = document.querySelector('.product-workspace');
+ const editor = document.getElementById('editor');
+ const worktop = workspace ? Math.round(workspace.getBoundingClientRect().top + scrollY) : 0;
+ const editbottom = editor ? Math.round(editor.getBoundingClientRect().bottom + scrollY) : 0;
+ badge.textContent = 'Catálogo: y=' + worktop + ' | Editor fim: y=' + editbottom + ' | PRÉVIA FICTÍCIA | largura: ' + width + 'px | excesso horizontal: ' + overflow + 'px | tabelas: ' + (tables.join(',') || '0') + 'px';
 }, 500);
 </script>`;
 function json(res, value) { res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' }); res.end(JSON.stringify(value)); }
@@ -31,16 +38,23 @@ const server = http.createServer(async (req, res) => {
     if (path === '/preview/login' || path === '/preview/admin') {
       res.writeHead(302, { Location: '/admin', 'Set-Cookie': `layout-logged=${path.endsWith('admin') ? 'yes' : 'no'}; Path=/; SameSite=Lax` }); return res.end();
     }
-    if (path === '/preview/mobile' || path === '/preview/tablet') {
-      const width = path.endsWith('mobile') ? 390 : 768;
+    if (path === '/preview/mobile' || path === '/preview/tablet' || path === '/preview/laptop') {
+      const width = path.endsWith('mobile') ? 390 : path.endsWith('laptop') ? 1366 : 768;
+      const height = path.endsWith('laptop') ? 768 : 1050;
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-      return res.end(`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prévia ${width}px</title><style>body{margin:0;background:#72838b;display:flex;justify-content:center}iframe{width:${width}px;max-width:100%;height:1050px;border:0;background:#fff}</style><iframe src="${url.searchParams.get('page') === 'activate' ? '/activate#token=' + '0'.repeat(64) : url.searchParams.get('page') === 'tv' ? '/tv?screen=tv01' : '/admin'}" title="SYSTV em ${width}px"></iframe>`);
+      return res.end(`<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><title>Prévia ${width}px</title><style>body{margin:0;background:#72838b;display:flex;justify-content:center}iframe{width:${width}px;max-width:100%;height:${height}px;border:0;background:#fff}</style><iframe src="${url.searchParams.get('page') === 'activate' ? '/activate#token=' + '0'.repeat(64) : url.searchParams.get('page') === 'tv' ? '/tv?screen=tv01' : '/admin'}" title="SYSTV em ${width}px"></iframe>`);
     }
     if (path === '/api/events') {
       res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store' }); res.write(`data: ${JSON.stringify(state)}\n\n`);
       const timer = setInterval(() => res.write(': heartbeat\n\n'), 15000); req.on('close', () => clearInterval(timer)); return;
     }
     if (path === '/api/state') return json(res, state);
+    if (/^\/api\/screens\/[^/]+\/display-link$/.test(path) && req.method === 'POST') {
+      return json(res, {path:'/tv?screen='+encodeURIComponent(path.split('/')[3])+'#display='+'a'.repeat(64)});
+    }
+    if (/^\/api\/screens\/[^/]+\/display-devices$/.test(path) && req.method === 'POST') {
+      return json(res, {token:'b'.repeat(64)});
+    }
     if (/^\/api\/products\/\d+\/position$/.test(path) && req.method === 'PUT') {
       let body = ''; for await (const chunk of req) body += chunk;
       const input = JSON.parse(body);

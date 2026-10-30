@@ -170,7 +170,7 @@ Uma instância atende várias TVs com catálogos independentes. O MariaDB e as s
 
 Referências: [redimensionamento de imagens com sharp](https://sharp.pixelplumbing.com/api-resize/), [Node.js no DDEV](https://docs.ddev.com/en/stable/users/quickstart/#nodejs), [daemons e portas no DDEV](https://docs.ddev.com/en/stable/users/extend/customization-extendibility/), [pool de conexões mysql2](https://sidorares.github.io/node-mysql2/docs/examples/connections/create-pool).
 
-Os cartões de seleção de TV mostram **Online** em verde ou **Offline** em vermelho. Cada painel aberto envia presença a cada 15 segundos; sem resposta por 45 segundos, a TV fica offline. O backend consulta o status a cada 5 segundos. Se vários painéis usam a mesma TV cadastrada, ela permanece online enquanto pelo menos um responde. Na falta de comunicação do administrador com a API, o indicador mostra “Verificando conexão”.
+Os cartões de seleção de TV mostram **Online** em verde ou **Offline** em vermelho. Cada painel aberto envia presença a cada 15 segundos; sem resposta por 45 segundos, a TV fica offline. O painel administrativo consulta o status a cada 5 segundos. Se vários painéis usam a mesma TV cadastrada, ela permanece online enquanto pelo menos um responde. Na falta de comunicação do administrador com a API, o indicador mostra “Verificando conexão”.
 
 Administradores gerenciam siglas e descrições no menu **Unidades**. As unidades são globais, armazenadas no MariaDB e disponíveis para todas as TVs e operadores. As opções iniciais KG, UN, G, L, PCT e CX são preservadas pela migração. Alterar uma sigla atualiza os produtos vinculados e os painéis em tempo real. A exclusão é bloqueada enquanto houver produtos usando a unidade; mantenha ao menos uma unidade cadastrada.
 
@@ -227,3 +227,42 @@ A rota `PUT /api/products/:id/position` recebe apenas TV e posição e não alte
 nome, preço, unidade ou oferta. A permissão é conferida na TV atual do produto;
 se o item mudou de TV, a operação exige atualizar o catálogo. A transação e o
 índice único são os mesmos usados na ordenação por formulário.
+
+
+## Links de exibição e monitoramento automático (2.7.4)
+
+O painel fornece Copiar link da TV para configurar o endereço de inicialização
+no navegador ou gerenciador de telas. Não há sessão administrativa, pareamento
+por código ou aprovação por aparelho. O endereço precisa ser configurado uma
+vez em cada destino, como já ocorre para escolher o catálogo exibido.
+
+O link autoriza somente registrar dispositivos e informar presença da TV à qual
+pertence. O servidor deriva sua assinatura de uma chave privada persistente e
+de um nonce por TV. O nonce fica em `screen_display_links`, fora do estado
+público. A assinatura vai no fragmento da URL, que não é enviado no acesso HTTP,
+e é transmitida apenas no corpo do registro automático via HTTPS. A credencial
+individual é armazenada como hash no banco. Tokens de exibição não são sessões
+administrativas e não autorizam edição.
+
+Criar, consultar ou renovar o endereço exige uma sessão com permissão sobre a
+TV. A renovação troca o nonce e revoga dispositivos/presença apenas dessa TV.
+O comando de revogar dispositivos também invalida o link anterior. Os backups
+do banco e de `/etc/systv` devem ser preservados juntos para manter as assinaturas
+após uma restauração.
+
+O navegador guarda sua identificação, credencial e link localmente. A cada
+15 segundos, envia presença; o painel considera online um dispositivo que
+respondeu nos últimos 45 segundos. Em falha de rede ou expiração, o navegador
+se registra novamente sem login. Não há vencimento periódico do link. Fechar
+uma aba interrompe seus envios, e a presença expira pelo prazo do servidor sem
+derrubar outra aba do mesmo dispositivo. Páginas restauradas pelo navegador
+retomam conexão e monitoramento.
+
+Links antigos sem credencial não são autorizados anonimamente: os preços
+continuam visíveis, mas a TV informa que deve ser usado o endereço copiado no
+painel. Dispositivos com autorização anterior válida são compatíveis.
+`preview=1` identifica uma prévia: não registra presença, não lê credenciais do
+dispositivo e não interfere no status real do catálogo.
+
+`public/tv-presence.js` concentra esse ciclo e permite testar inicialização,
+reabertura, queda de rede, expiração e revogação sem usar aparelhos reais.

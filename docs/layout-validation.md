@@ -81,3 +81,51 @@ do editor exibidos, sem excesso horizontal. Os rótulos foram abreviados para
 Subir/Descer após a conferência para evitar quebra em duas linhas, preservando
 nomes acessíveis completos. A versão final desses rótulos, tema claro e larguras
 de tablet/celular não foram reconferidos. A sintaxe CSS passou no tinycss2.
+
+
+## Links de exibição automáticos — 2026-10-30
+
+Validação funcional: teste em MariaDB temporário registrou 30 dispositivos sem
+sessão administrativa, confirmou presença de todos e verificou estabilidade da
+assinatura após reiniciar a aplicação. Cobertos link incorreto, uso em outra TV,
+permissões de operador, renovação isolada, revogação e impossibilidade de usar a
+credencial do dispositivo como sessão administrativa. Testes do cliente cobrem
+reabertura, queda de rede, expiração, URL sem assinatura, compatibilidade legada,
+prévia sem armazenamento/presença, fechamento de abas e rajadas de eventos.
+
+Validação visual no Safari com dados fictícios: diálogo Configurar TV em desktop
+1685 px/tema escuro e celular 390 px/tema claro, com endereço somente para leitura
+e ação de renovação legíveis. O endereço completo permaneceu dentro do input.
+A exibição por link fictício carregou produtos e preços sem login e sem aviso
+de monitoramento. A prévia administrativa foi exercitada separadamente. Depois
+da conferência, o aviso foi movido para o componente compartilhado de conexão e
+a identificação de prévia passou para o marcador da TV, preservando o rodapé.
+Esses dois ajustes finais não foram reconferidos visualmente, nem tablet.
+Não foram renovadas credenciais ou alteradas TVs reais; copiar para a área de
+transferência e a confirmação de renovação não foram executados nessa sessão.
+CSS não foi alterado na implementação final.
+
+## Painel compacto — 2026-10-30
+
+Validação visual no Safari, com dados fictícios e 30 TVs, sem alterar o servidor:
+
+- Notebook 1366 × 768: catálogo começa em y=344 px. O formulário termina em
+  y=700 px no cadastro e y=752 px na edição, incluindo salvar, excluir e setas
+  de ordenação. Controles visíveis na altura inicial, sem rolagem horizontal.
+- Conferidos temas claro e escuro; tablet de 768 px e celular de 390 px, com
+  quebra natural das barras de ações e rolagem vertical para conteúdo longo.
+  Excesso horizontal medido de 0 px, inclusive na lista de produtos.
+- Conferidos seleção de 30 TVs, catálogo vazio, prévia e lista, editor, configuração
+  da TV, unidades, identidade, usuários com textos longos, e-mails e login.
+- Diálogos e catálogos extensos continuam permitindo rolagem vertical. Não foi
+  feito teste em Edge/Chrome nem em dispositivos físicos nesta revisão.
+
+Validação funcional, separada da visual:
+
+- Troca de TV limpa a edição e atualiza produtos, contadores e status. Seleção
+  de TV vazia e alternância prévia/lista verificadas no navegador.
+- Abertura do editor e botão Descer verificados na prévia: posição 1 passou a 2,
+  com confirmação de salvamento. A alteração existe somente na memória da fixture.
+- `npm run check`, 45 testes via `ddev test`, dois testes de release e parser CSS
+  aprovados. Não foi repetido o teste de arraste nesta revisão de layout.
+- Produção e GitHub não foram atualizados nesta etapa.

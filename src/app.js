@@ -16,7 +16,7 @@ const files = {
   '/activate': 'activate.html', '/activate.js': 'activate.js',
   '/': 'admin.html', '/admin': 'admin.html', '/tv': 'tv.html',
   '/security.js': 'security.js', '/tv-palettes.js': 'tv-palettes.js', '/theme.js': 'theme.js', '/icons.svg': 'icons.svg', '/style.css': 'style.css', '/admin.js': 'admin.js', '/tv.js': 'tv.js',
-  '/tv-connection.js': 'tv-connection.js',
+  '/tv-connection.js': 'tv-connection.js', '/tv-presence.js': 'tv-presence.js',
 };
 
 export async function createApp(db, config, dependencies = {}) {
@@ -30,7 +30,7 @@ export async function createApp(db, config, dependencies = {}) {
   const users = createUsers(db);
   const versionStatus = await createVersionStatus(dependencies.version);
   const logos = createLogos(db);
-  const presence = createPresence(db);
+  const presence = createPresence(db, config);
   const events = await createEvents(repository, config);
   const publicRequests = createRateLimit();
   const cleanup = setInterval(() => Promise.all([auth.cleanup(), presence.cleanup(), publicRequests.cleanup()]).catch(error => console.error('Falha na limpeza de sessões:', error.code || error.message)), 60000);
@@ -71,6 +71,9 @@ export async function createApp(db, config, dependencies = {}) {
           await presence.report(route.split('/')[3], await readBody(req));
           return json(res, 200, { ok: true });
         }
+        if (/^\/api\/screens\/[^/]+\/display-devices$/.test(route) && method === 'POST') {
+          return json(res, 200, await presence.enrollDisplay(route.split('/')[3], await readBody(req), req));
+        }
         const user = await auth.currentUser(req);
         if (route === '/api/session' && method === 'GET') return json(res, 200, { authenticated: Boolean(user), user });
         if (route === '/api/login' && method === 'POST') {
@@ -84,6 +87,9 @@ export async function createApp(db, config, dependencies = {}) {
         if (route === '/api/logout' && method === 'POST') {
           await auth.logout(req, res);
           return json(res, 200, { ok: true });
+        }
+        if (/^\/api\/screens\/[^/]+\/display-link$/.test(route) && method === 'POST') {
+          return json(res, 200, await presence.displayLink(route.split('/')[3], await readBody(req), user));
         }
         if (/^\/api\/screens\/[^/]+\/devices$/.test(route) && ['POST', 'DELETE'].includes(method)) {
           const screen = route.split('/')[3];

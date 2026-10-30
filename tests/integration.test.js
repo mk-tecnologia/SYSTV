@@ -58,7 +58,7 @@ test('API com MariaDB real, múltiplas TVs e sessões persistentes', { timeout: 
     await admin.query(`CREATE DATABASE ${admin.escapeId(name)} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci`);
     db = createDatabase({ ...config.database, database: name, user: process.env.TEST_DB_USER || 'root', password: process.env.TEST_DB_PASSWORD || 'root' });
     await migrate(db); await migrate(db);
-    assert.equal((await db.query('SELECT * FROM schema_migrations')).length, 11);
+    assert.equal((await db.query('SELECT * FROM schema_migrations')).length, 12);
     assert.equal(await seed(db), true); assert.equal(await seed(db), false);
     await db.close(); db = undefined;
     await start();
@@ -66,6 +66,7 @@ test('API com MariaDB real, múltiplas TVs e sessões persistentes', { timeout: 
     await t.test('páginas, saúde do banco e controle de acesso', async () => {
       assert.equal((await fetch(base)).status, 200);
       assert.equal((await fetch(base + '/tv?screen=tv01')).status, 200);
+      assert.equal((await fetch(base + '/tv-presence.js')).status, 200);
       assert.deepEqual(await (await call('health')).json(), { status: 'ok', database: 'mariadb' });
       const initial = await (await call('state')).json(); assert.equal(initial.products.length, 24);
       assert.equal((await call('products', 'POST', {}, false)).status, 401);
@@ -237,6 +238,62 @@ test('API com MariaDB real, múltiplas TVs e sessões persistentes', { timeout: 
       await call('screens/tv01/devices', 'DELETE');
     });
 
+    await t.test('links de exibição registram uma frota sem login e isolam a revogação por TV', async () => {
+      const screen = (await (await call('screens','POST',{name:'Exibição automática'})).json()).id;
+      const other = (await (await call('screens','POST',{name:'Exibição independente'})).json()).id;
+      const link = async (id, renew=false) => {
+        const response = await call('screens/' + id + '/display-link','POST',{renew});
+        assert.equal(response.status,200);
+        const {path} = await response.json();
+        assert.equal(path.split('#')[0],'/tv?screen='+id);
+        return new URLSearchParams(path.split('#')[1]).get('display');
+      };
+      assert.equal((await call('screens/'+screen+'/display-link','POST',{},false)).status,401);
+      const key = await link(screen), otherKey = await link(other);
+      assert.match(key,/^[a-f0-9]{64}$/);
+      assert.equal(await link(screen),key);
+      assert.notEqual(otherKey,key);
+      const snapshot = await (await call('state','GET',undefined,false)).text();
+      assert.ok(!snapshot.includes(key));
+      const rows=await db.query('SELECT nonce FROM screen_display_links WHERE screen_id=?',[screen]);
+      assert.notEqual(rows[0].nonce,key);
+      const device=randomUUID(), otherDevice=randomUUID();
+      const enroll = (id, deviceId, linkKey) => call('screens/'+id+'/display-devices','POST',{device:deviceId,key:linkKey},false);
+      assert.equal((await enroll(screen,device,'0'.repeat(64))).status,403);
+      assert.equal((await enroll(other,device,key)).status,403);
+      assert.equal((await enroll(screen,device,undefined)).status,403);
+      const first=await enroll(screen,device,key); assert.equal(first.status,200);
+      const token=(await first.json()).token;
+      const repeated=await Promise.all([enroll(screen,device,key),enroll(screen,device,key)]);
+      for(const response of repeated) { assert.equal(response.status,200); assert.equal((await response.json()).token,token); }
+      assert.equal((await call('screens/'+screen+'/heartbeat','POST',{device,token},false)).status,200);
+      await app.close(); app=undefined; await db.close(); db=undefined;
+      await start();
+      assert.equal(await link(screen),key);
+      assert.equal((await call('screens/'+screen+'/heartbeat','POST',{device,token},false)).status,200);
+
+      assert.equal((await (await call('session','GET',undefined,false,{Cookie:'session='+token})).json()).authenticated,false);
+      const peers=Array.from({length:30},()=>randomUUID());
+      const enrolled=await Promise.all(peers.map(async deviceId=>{
+        const response=await enroll(screen,deviceId,key); assert.equal(response.status,200);
+        return {device:deviceId,token:(await response.json()).token};
+      }));
+      const heartbeats=await Promise.all(enrolled.map(input=>call('screens/'+screen+'/heartbeat','POST',input,false)));
+      heartbeats.forEach(response=>assert.equal(response.status,200));
+      const status=(await (await call('screens/status')).json()).find(row=>row.id===screen);
+      assert.equal(status.connected_devices,31);
+      const otherToken=(await (await enroll(other,otherDevice,otherKey)).json()).token;
+      const renewed=await link(screen,true); assert.notEqual(renewed,key);
+      assert.equal((await enroll(screen,device,key)).status,403);
+      assert.equal((await call('screens/'+screen+'/heartbeat','POST',{device,token},false)).status,401);
+      assert.equal((await enroll(screen,device,renewed)).status,200);
+      assert.equal((await call('screens/'+other+'/heartbeat','POST',{device:otherDevice,token:otherToken},false)).status,200);
+      await call('screens/'+screen+'/devices','DELETE');
+      assert.equal((await enroll(screen,device,renewed)).status,403);
+      assert.equal((await call('screens/'+screen,'DELETE')).status,200);
+      assert.equal((await call('screens/'+other,'DELETE')).status,200);
+    });
+
     await t.test('validação, centavos e atualização simultânea de duas TVs', async () => {
       const nextTV1 = await connectTV(); const nextTV2 = await connectTV();
       assert.equal((await nextTV1()).products.length, 24); await nextTV2();
@@ -287,6 +344,8 @@ test('API com MariaDB real, múltiplas TVs e sessões persistentes', { timeout: 
       assert.deepEqual((await (await asEditor('session')).json()).user.screens, ['tv01']);
       assert.equal((await asEditor('screens/' + extraScreen + '/devices', 'POST', { device: '33333333-3333-4333-8333-333333333333' })).status, 403);
       assert.equal((await asEditor('screens/' + extraScreen + '/devices', 'DELETE')).status, 403);
+      assert.equal((await asEditor('screens/' + extraScreen + '/display-link','POST',{})).status,403);
+      assert.equal((await asEditor('screens/tv01/display-link','POST',{})).status,200);
       assert.equal((await asEditor('screens/tv01/devices', 'POST', { device: '33333333-3333-4333-8333-333333333333' })).status, 200);
       assert.equal((await asEditor('products', 'PUT', { ...product, id: productId, price: 5678 })).status, 200);
       assert.equal((await asEditor('products', 'POST', { ...product, screen: extraScreen })).status, 403);

@@ -81,13 +81,17 @@ systvctl activation-link
 
 A emissão invalida o link anterior. Em instalações sem terminal interativo, o link é salvo em `/etc/systv/activation-link.txt`, com leitura restrita ao root, e não é impresso nos logs de automação.
 
-Após entrar na administração, configure a identidade da empresa e cadastre os produtos. A primeira TV está disponível em:
+Após entrar na administração, configure a identidade da empresa e cadastre os produtos.
 
-```text
-https://SEU-SERVIDOR/tv?screen=tv01
-```
+### Exibição e monitoramento das TVs
 
-O catálogo de exibição é público para os dispositivos que alcançam o servidor. A edição exige autenticação e as permissões correspondentes. Para registrar a presença online de uma TV, autorize o navegador por uma sessão com permissão para aquela tela.
+Selecione a TV no painel e use **Copiar link da TV**. Configure esse endereço uma vez no navegador ou no gerenciador que inicia as telas. A TV se registra automaticamente, sem login administrativo, códigos de pareamento ou aprovação presencial.
+
+O mesmo link permanece válido após reinícios; o navegador recupera o monitoramento após quedas de rede ou expiração da credencial. Para trocar um link exposto, use **Configurar TV → Renovar link de exibição**. Isso invalida o endereço anterior e as autorizações somente daquela TV.
+
+**Prévia da TV** abre uma visualização que não interfere no indicador online. O catálogo continua público para os dispositivos que alcançam o servidor; o link de exibição autoriza apenas o registro de presença e não permite administrar produtos ou usuários.
+
+Dispositivos já autorizados continuam funcionando. TVs antigas abertas apenas com `/tv?screen=...`, sem uma credencial válida, precisam receber o link completo de exibição uma vez. Essa configuração pode ser feita pelo gerenciador das telas; não exige ler ou digitar códigos em cada aparelho.
 
 ## HTTPS e certificados
 

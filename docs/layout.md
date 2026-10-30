@@ -12,7 +12,7 @@ correções no fim do arquivo: alterar o componente compartilhado e revisar seus
   máximo de 1440 px e margens laterais de 32 px; 24 px em tablet e 16 px em celular.
 - Cada página tem um título principal, descrição e conteúdo. Cabeçalhos de painéis
   explicam a seção, sem repetir desnecessariamente o título da página.
-- Espaço entre seções: 24 px no desktop e 16 px no celular. Rodapé separado por 32 px.
+- Espaço entre seções: 16 px. Rodapé compacto, separado por 16 px.
 - A versão pertence à identidade do produto no cabeçalho. Tema, perfil e saída
   formam o grupo da conta. A navegação usa o mesmo alinhamento do conteúdo.
 
@@ -22,19 +22,19 @@ correções no fim do arquivo: alterar o componente compartilhado e revisar seus
 | --- | --- |
 | Escala de espaçamento | 4, 8, 12, 16, 24, 32 e 48 px |
 | Painéis e diálogos | Borda de 1 px, raio de 12 px |
-| Preenchimento de painéis e diálogos | 24 px; 16 px em celular |
+| Preenchimento de painéis e diálogos | 16 px |
 | Inputs, selects, botões, seletores e caixas internas | Raio de 8 px |
 | Elementos internos de controles segmentados | Raio de 4 px, ajustado ao contorno externo |
 | Marcadores e linhas da prévia | Raio de 6 px |
 | Altura de controles | Mínimo de 40 px; 44 px no celular |
 | Ações compactas em tabelas | 32 × 32 px; 40 × 40 px no celular |
 | Ícones de interface | 18 × 18 px; 22 px em marcas de seção |
-| Título da página | 28 px; 24 px no celular |
+| Título da página | 24 px |
 | Título de painel/diálogo | 18 px |
 | Título de acesso (login/ativação) | 22 px |
 | Texto/campo | 14 px; tabelas e botões 13 px |
 | Rótulos, ajuda e metadados | 12 px; pequenos marcadores 10–11 px |
-| Distância entre campos | 16 px |
+| Distância entre campos | 16 px; 12 px no editor de produtos |
 | Distância entre rótulo e campo | 8 px |
 
 Exceções têm função, não dependem da página: indicadores de presença são círculos;
@@ -58,7 +58,7 @@ mesmas variáveis, sem criar regras particulares para cada tela.
 
 ## Formulários e diálogos
 
-Todo formulário usa uma grade com 16 px entre os campos. Evitar combinar margens
+Formulários usam uma grade com 16 px entre os campos; o editor de produtos usa 12 px para manter as ações próximas do cadastro. Evitar combinar margens
 individuais nos rótulos com espaçamento no formulário. Textos auxiliares ficam
 junto do campo. Usar `.form-row` para campos relacionados; a grade se reorganiza
 sem forçar largura mínima.
@@ -70,6 +70,21 @@ TV distribui o preenchimento entre cabeçalho, corpo e ações, sem duplicá-lo.
 
 Login, recuperação de senha, confirmação de 2FA e ativação usam o mesmo painel de
 acesso e os mesmos controles. Não acrescentar gradientes, raios ou sombras próprios.
+
+## Densidade do painel administrativo
+
+- Priorizar seleção de TV, cadastro e catálogo antes de textos explicativos.
+- A seleção usa um select nativo, com status nas opções e indicador da TV selecionada.
+  O número de TVs não aumenta a altura da página; conferir também com 30 TVs.
+- Indicadores ficam em uma linha flexível, sem cartões individuais. Cabeçalho e
+  descrição da página podem compartilhar a linha e quebram naturalmente no celular.
+- Preço, unidade e ordem compartilham uma linha; mover produtos fica no cabeçalho
+  do editor, com nomes acessíveis e dicas nos botões de seta.
+- Ajuda detalhada fica em um disclosure nativo, acessível por teclado. Excluir TV
+  pertence à configuração da TV; excluir produto permanece no editor.
+- Em 1366 × 768, manter formulário e primeiras linhas do catálogo visíveis sem
+  rolagem inicial. Catálogos longos continuam usando a rolagem normal da página.
+  Não reduzir fontes de campos nem criar barras internas para forçar tudo a caber.
 
 ## Listas e responsividade
 
@@ -96,6 +111,10 @@ A exibição de preços tem uma finalidade diferente da administração. A grade
 fontes se ajustam ao visor para manter os preços completos e legíveis. Preservar
 as variáveis `--tv-*`, `--preview-*`, `--price-font`, `--name-font`, `--rows` e
 `--columns`. As seis paletas devem ser refletidas na prévia e no painel real.
+O botão Copiar link da TV entrega o endereço para exibição e monitoramento
+sem login no aparelho. Prévia da TV não altera a presença. A configuração oferece
+o endereço somente para leitura e renovação explícita com confirmação. Não
+introduzir pareamento por códigos ou login obrigatório em cada tela.
 Usar os mesmos raios de componentes pequenos e a mesma família de estados no
 aviso de conexão. Alertas participam do layout e não cobrem produtos.
 
@@ -112,6 +131,7 @@ node tests/fixtures/layout-preview.js
 ```
 
 - Desktop: `http://127.0.0.1:4178/preview/admin`
+- Notebook (1366 × 768): `http://127.0.0.1:4178/preview/laptop`
 - Tablet (768 px): `http://127.0.0.1:4178/preview/tablet`
 - Celular (390 px): `http://127.0.0.1:4178/preview/mobile`
 - Login: `http://127.0.0.1:4178/preview/login`

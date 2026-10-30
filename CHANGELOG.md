@@ -1,5 +1,17 @@
 # Histórico
 
+## 2.7.4
+
+- Compacta o painel administrativo: seleção de TV sem cartões expansivos, indicadores em linha, cadastro e catálogo próximos do topo, ajuda recolhível e exclusão de TV na configuração. Preserva controles acessíveis e a rolagem normal de catálogos extensos.
+
+- Substitui a necessidade de login em cada TV por links exclusivos de exibição, copiados no painel, com registro e reconexão automáticos do navegador.
+- Mantém o link estável após reiniciar a aplicação e permite renová-lo por TV, invalidando apenas as autorizações daquela tela.
+- Separa a prévia administrativa da exibição monitorada para que a prévia não mantenha uma TV desligada como online.
+- Preserva dispositivos já autorizados e recupera credenciais expiradas automaticamente quando o navegador possui o link válido.
+- Evita esgotar a cota de presença durante muitas atualizações de catálogo e mantém o monitoramento de outras abas ao fechar uma exibição.
+- Mostra orientação quando o endereço antigo não possui autorização de monitoramento, sem solicitar códigos ou login na TV.
+
+
 ## 2.7.3
 
 - Permite arrastar produtos na prévia e na lista para reorganizar a TV, com salvamento automático, indicação de destino, botões Subir/Descer e atalhos de teclado. A movimentação altera somente a posição e respeita as permissões da TV.

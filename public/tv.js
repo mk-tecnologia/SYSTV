@@ -1,40 +1,23 @@
+import { createTVPresence } from './tv-presence.js';
 import { getTVPalette } from './tv-palettes.js';
 const $ = id => document.getElementById(id);
 const screen = new URLSearchParams(location.search).get('screen') || 'tv01';
-const storageKey = 'systv-device:' + screen;
-let credential;
-try { credential = JSON.parse(localStorage.getItem(storageKey)); } catch {}
-const device = credential?.device || crypto.randomUUID();
-let token = credential?.token, enrolling = false;
-async function enrollPresence() {
-  if (enrolling || token) return;
-  enrolling = true;
-  try {
-    const response = await fetch('/api/screens/' + encodeURIComponent(screen) + '/devices', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ device }), signal: AbortSignal.timeout(8000),
-    });
-    if (!response.ok) return;
-    token = (await response.json()).token;
-    try { localStorage.setItem(storageKey, JSON.stringify({ device, token })); } catch {}
-  } catch {} finally { enrolling = false; }
-}
-let presenceTimer, presenceRequest;
-function reportPresence(disconnected = false) {
-  const url = '/api/screens/' + encodeURIComponent(screen) + '/heartbeat';
-  if (!token) return;
-  const body = JSON.stringify({ device, token, disconnected });
-  if (disconnected) { navigator.sendBeacon(url, new Blob([body], { type: 'application/json' })); return; }
-  if (!state?.screens.some(item => item.id === screen) || presenceRequest) return;
-  presenceRequest = fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: AbortSignal.timeout(8000) })
-    .then(response => {
-      if (response.status === 401) { token = null; try { localStorage.removeItem(storageKey); } catch {} }
-    }).catch(() => {}).finally(() => { presenceRequest = null; });
-}
-function startPresence() {
-  clearInterval(presenceTimer);
-  const report = async () => { await enrollPresence(); reportPresence(); };
-  report(); presenceTimer = setInterval(report, 15000);
-}
+const previewMode = new URLSearchParams(location.search).get('preview') === '1';
+const presenceLabels = {
+  preview: '',
+  link_required: 'Para monitorar esta TV, use o link de exibição copiado no painel.',
+  invalid_link: 'Link de exibição inválido ou renovado. Copie o link atual no painel.',
+  reconnecting: 'Reconectando o monitoramento…', ready: '',
+};
+const presence = createTVPresence({
+  screen, preview: previewMode,
+  key: new URLSearchParams(location.hash.slice(1)).get('display'),
+  ready: () => Boolean(state?.screens.some(item => item.id === screen)),
+  onStatus(status) {
+    const label = $('tv-presence-status'); label.textContent = presenceLabels[status];
+    $('tv-presence-alert').hidden = !label.textContent; scheduleFit();
+  },
+});
 let state, page = 0, fitFrame, rotationTimer, rotationKey = '', connectionStatus;
 
 function columns() { return window.innerWidth < 900 ? 1 : 2; }
@@ -48,7 +31,7 @@ function render() {
   $('store-name').textContent = state.settings.name;
   document.title = state.settings.name + ' · ' + (selected?.name || 'TV');
   renderLogos();
-  $('screen-name').textContent = selected?.name || 'TV não encontrada';
+  $('screen-name').textContent = (previewMode ? 'Prévia · ' : '') + (selected?.name || 'TV não encontrada');
   $('message').textContent = state.settings.message;
   const products = state.products.filter(product => product.screen === screen);
   const count = columns();
@@ -148,7 +131,7 @@ const connection = createTVConnection({
   lastSyncedAt: cachedSync,
   onState(snapshot, timestamp) {
     state = snapshot;
-    reportPresence();
+    void presence.report();
     try {
       localStorage.setItem('systv-state', JSON.stringify(snapshot));
       localStorage.setItem('systv-last-sync', String(timestamp));
@@ -183,10 +166,10 @@ $('retry-connection').onclick = () => connection.retry();
 window.addEventListener('online', () => connection.retry());
 window.addEventListener('offline', () => connection.offline());
 document.addEventListener('visibilitychange', () => { if (!document.hidden) connection.check(); });
-window.addEventListener('pagehide', () => { connection.stop(); clearInterval(presenceTimer); reportPresence(true); });
-window.addEventListener('pageshow', event => { if (event.persisted) { connection.start(); startPresence(); } });
+window.addEventListener('pagehide', () => { connection.stop(); presence.stop(); });
+window.addEventListener('pageshow', event => { if (event.persisted) { connection.start(); presence.start(); } });
 connection.start();
-startPresence();
+presence.start();
 function clock() { $('clock').textContent = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }); updateRetry(); }
 clock(); setInterval(clock, 1000);
 window.addEventListener('resize', render);

@@ -25,14 +25,13 @@ function updateProductPage() {
   form.elements.position.max = screenProducts(product.screen).filter(item => item.id !== product.id).length;
   if (!product.screen || !Number.isInteger(product.position) || product.position < 0) return;
   const page = productPage(product);
-  const count = screenProducts(product.screen).length + (product.id ? 0 : 1);
-  const pages = Math.max(1, Math.ceil(count / TV_PAGE_SIZE));
-  const interval = state.screens.find(screen => screen.id === product.screen)?.page_interval_seconds ?? 15;
-  $('product-page-context').textContent = `Este produto será exibido na ${pageLabel(page)}. ` + (pages > 1 ? `O catálogo terá ${pages} telas, alternadas a cada ${interval} segundos.` : 'O catálogo cabe na Tela 01.') + ' A ordem começa em 0. Ao ocupar uma posição, os demais produtos são deslocados automaticamente.';
+  $('product-page-context').textContent = `${pageLabel(page)} · posição ${product.position}`;
 }
 const $ = id => document.getElementById(id);
 const money = value => (value / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 let screenPresence = new Map(), presenceChecking = false;
+const displayLinks = new Map(), displayLinkRequests = new Map();
+let displayLinkEpoch = 0;
 let securityUI;
 let state, currentUser = null, selected = 'tv01', section = 'products', users = [];
 let draggedProduct = null, reorderPending = false, suppressProductClickUntil = 0;
@@ -56,6 +55,10 @@ function notice(message, error = false) {
 }
 
 function setUser(user) {
+  if (JSON.stringify([currentUser?.id,currentUser?.role,currentUser?.screens]) !== JSON.stringify([user?.id,user?.role,user?.screens])) {
+    displayLinkEpoch++; displayLinks.clear();
+    for (const id of ['open-screen','sidebar-tv']) $(id).removeAttribute('href');
+  }
   currentUser = user;
   document.body.classList.remove('auth-pending');
   document.body.classList.toggle('login-view', !user);
@@ -77,6 +80,7 @@ function setUser(user) {
   document.querySelectorAll('[data-admin]').forEach(el => el.hidden = user?.role !== 'admin');
   if (!user || user.role !== 'admin' && section !== 'users') section = 'products';
   if (!user) securityUI?.clear();
+  if (!user) displayLinks.clear();
   if (!user) document.querySelectorAll('dialog[open]').forEach(dialog => dialog.close());
   showSection(section);
   render();
@@ -143,39 +147,16 @@ function makeButton(label, action, danger = false) {
 
 function renderScreenOptions(screens) {
   const container = $('screen-options');
-  const existing = new Map([...container.querySelectorAll('.screen-option')].map(option => [option.dataset.screen, option]));
-  for (const [id, option] of existing) if (!screens.some(screen => screen.id === id)) option.remove();
-  screens.forEach((screen, index) => {
-    let option = existing.get(screen.id);
-    if (!option) {
-      option = document.createElement('label'); option.className = 'screen-option'; option.dataset.screen = screen.id;
-      const radio = document.createElement('input'); radio.type = 'radio'; radio.name = 'editing-screen'; radio.value = screen.id;
-      radio.onchange = () => { selected = screen.id; $('search').value = ''; render(); };
-      const icon = document.createElement('span'); icon.className = 'screen-icon'; icon.setAttribute('aria-hidden', 'true');
-      icon.append(makeIcon('monitor'));
-      const content = document.createElement('span'); content.className = 'screen-option-content';
-      const name = document.createElement('strong'); name.className = 'screen-option-name';
-      const summary = document.createElement('span'); summary.className = 'screen-option-summary';
-      const status = document.createElement('span'); status.className = 'screen-option-status';
-      const presence = document.createElement('span'); presence.className = 'screen-presence';
-      content.append(name, presence, summary, status);
-      const check = document.createElement('span'); check.className = 'screen-check'; check.append(makeIcon('check')); check.setAttribute('aria-hidden', 'true');
-      option.append(radio, icon, content, check);
-    }
-    const active = screen.id === selected;
-    option.classList.toggle('selected', active);
-    option.querySelector('input').checked = active;
-    option.querySelector('.screen-option-name').textContent = screen.name;
-    const products = state.products.filter(product => product.screen === screen.id);
-    const offers = products.filter(product => product.highlight).length;
-    option.querySelector('.screen-option-summary').textContent = `${products.length} ${products.length === 1 ? 'produto' : 'produtos'} · ${offers} ${offers === 1 ? 'oferta' : 'ofertas'}`;
-    option.querySelector('.screen-option-status').textContent = active ? 'Selecionada para edição' : 'Selecionar esta TV';
-    const position = container.querySelectorAll('.screen-option')[index];
-    if (position !== option) container.insertBefore(option, position || null);
-  });
-  container.hidden = !screens.length;
+  const signature = JSON.stringify(screens.map(screen => [screen.id, screen.name]));
+  if (container.dataset.signature !== signature) {
+    container.replaceChildren(...screens.map(screen => new Option(screen.name, screen.id)));
+    container.dataset.signature = signature;
+  }
+  container.value = selected;
+  container.disabled = !screens.length;
   renderPresence();
 }
+$('screen-options').onchange = event => { selected = event.target.value; $('search').value = ''; render(); };
 
 function render() {
   if (!state || !currentUser || draggedProduct) return;
@@ -184,11 +165,12 @@ function render() {
   renderScreenOptions(screens);
   const selectedScreen = screens.find(screen => screen.id === selected);
   $('editing-screen').textContent = selectedScreen?.name || 'Nenhuma TV disponível';
-  $('rotation-summary').textContent = selectedScreen ? `Troca de páginas: ${selectedScreen.page_interval_seconds ?? 15} segundos, quando houver mais de uma página.` : '';
-  $('catalog-description').textContent = selectedScreen ? `Alterações neste catálogo atualizam o painel de “${selectedScreen.name}”.` : 'Selecione uma TV autorizada para gerenciar produtos.';
-  const url = '/tv?screen=' + encodeURIComponent(selected);
-  for (const id of ['open-screen', 'sidebar-tv']) { $(id).href = url; $(id).hidden = !selected; }
+  $('rotation-summary').textContent = selectedScreen ? `Páginas a cada ${selectedScreen.page_interval_seconds ?? 15}s` : '';
+  $('catalog-description').textContent = selectedScreen ? 'Clique para editar · arraste para ordenar' : 'Selecione uma TV autorizada para gerenciar produtos.';
+  updateDisplayLinkActions();
+
   $('add-product').disabled = !selected;
+  $('rename-screen').disabled = !selected;
   $('product-form').querySelectorAll('input, select, button').forEach(input => input.disabled = !selected);
   $('delete-product').hidden = !state.products.some(product => product.id === Number($('product-form').elements.id.value));
   const editingProduct = state.products.find(product => product.id === Number($('product-form').elements.id.value));
@@ -249,6 +231,61 @@ function render() {
   renderUnitOptions();
   if (section === 'users') renderUsers();
 }
+
+function updateDisplayLinkActions() {
+  for (const id of ['open-screen', 'sidebar-tv']) {
+    const link = $(id); link.hidden = !selected;
+    if (selected) link.href = '/tv?screen=' + encodeURIComponent(selected) + '&preview=1'; else link.removeAttribute('href');
+    link.setAttribute('aria-disabled', String(!selected));
+  }
+  $('copy-screen-link').disabled = !selected;
+}
+async function getDisplayLink(screen, renew = false, fresh = false) {
+  if (!renew && !fresh && displayLinks.has(screen)) return displayLinks.get(screen);
+  if (displayLinkRequests.has(screen)) {
+    if (!renew) return displayLinkRequests.get(screen);
+    await displayLinkRequests.get(screen).catch(() => {});
+  }
+  const epoch = displayLinkEpoch;
+  const request = api(`screens/${encodeURIComponent(screen)}/display-link`, 'POST', { renew }).then(result => {
+    if (epoch !== displayLinkEpoch || !currentUser || !availableScreens().some(item => item.id === screen)) throw new Error('A sessão mudou. Entre novamente para copiar o link.');
+    const url = new URL(result.path, location.origin).href;
+    displayLinks.set(screen, url);
+    if ($('screen-form').dataset.screen === screen) $('screen-display-url').value = url;
+    return url;
+  }).finally(() => displayLinkRequests.delete(screen));
+  displayLinkRequests.set(screen, request); return request;
+}
+$('copy-screen-link').onclick = async () => {
+  const screen = selected, button = $('copy-screen-link');
+  button.disabled = true;
+  try {
+    const url = await getDisplayLink(screen, false, true);
+    try {
+      if (!navigator.clipboard?.writeText) throw new Error();
+      await navigator.clipboard.writeText(url);
+    } catch {
+      const previous = document.activeElement;
+      const field = document.createElement('textarea'); field.className = 'sr-only'; field.value = url; field.readOnly = true;
+      document.body.append(field); field.select();
+      const copied = document.execCommand('copy'); field.remove(); previous?.focus();
+      if (!copied) throw new Error('Copie o endereço em Configurar TV → Link de exibição.');
+    }
+    notice('Link da TV copiado. Use este endereço no navegador ou no gerenciador das telas.');
+  } catch (error) { notice(error.message || 'Não foi possível copiar o link.', true); }
+  finally { updateDisplayLinkActions(); }
+};
+$('renew-display-link').onclick = async () => {
+  const screen = $('screen-form').dataset.screen;
+  const name = state.screens.find(item => item.id === screen)?.name || 'esta TV';
+  if (!screen || !confirm(`Renovar o link de “${name}”? O link anterior e as autorizações dos dispositivos serão invalidados. Será necessário configurar o novo link nos dispositivos desta TV.`)) return;
+  const button = $('renew-display-link'); button.disabled = true;
+  try {
+    await getDisplayLink(screen, true); updateDisplayLinkActions(); await refreshPresence();
+    notice('Link renovado. Copie o novo endereço para os dispositivos desta TV.');
+  } catch (error) { $('screen-error').textContent = error.message; }
+  finally { button.disabled = false; }
+};
 
 async function moveCatalogProduct(product, position) {
   if (reorderPending || position < 0 || position >= screenProducts(product.screen).length || position === product.position) return;
@@ -530,7 +567,11 @@ function renderPaletteOptions(selected) {
 }
 function openScreenDialog(rename = false) {
   const form = $('screen-form'); form.reset(); form.dataset.screen = rename ? selected : '';
+  $('delete-screen').hidden = !rename;
   const screen = rename ? state.screens.find(screen => screen.id === selected) : null;
+  $('screen-display-link').hidden = !screen;
+  $('screen-display-url').value = screen ? displayLinks.get(screen.id) || '' : '';
+  if (screen) getDisplayLink(screen.id, false, true).catch(error => { $('screen-error').textContent = error.message; });
   if (screen) form.elements.name.value = screen.name;
   form.elements.page_interval_seconds.value = screen?.page_interval_seconds ?? 15;
   renderPaletteOptions(screen?.color_scheme || 'classic');
@@ -558,7 +599,7 @@ $('screen-form').onsubmit = async event => {
 };
 $('delete-screen').onclick = async () => {
   if (!confirm('Excluir esta TV e todos os produtos dela?')) return;
-  try { await api('screens/' + selected, 'DELETE'); await refreshSession(); notice('TV excluída.'); }
+  try { await api('screens/' + selected, 'DELETE'); await refreshSession(); $('screen-dialog').close(); notice('TV excluída.'); }
   catch (error) { notice(error.message, true); }
 };
 $('version-refresh').onclick = () => refreshVersion(true);
@@ -593,15 +634,21 @@ setInterval(() => { if (currentUser) refreshSession().catch(error => notice(erro
 window.addEventListener('focus', () => { if (currentUser) refreshSession().catch(error => notice(error.message, true)); });
 
 function renderPresence() {
-  document.querySelectorAll('.screen-option').forEach(option => {
-    const status = screenPresence.get(option.dataset.screen);
-    const badge = option.querySelector('.screen-presence');
-    const known = typeof status?.online === 'boolean';
-    badge.className = 'screen-presence ' + (known ? status.online ? 'online' : 'offline' : 'checking');
-    badge.textContent = known ? status.online ? 'Online' : 'Offline' : 'Verificando conexão';
-    badge.title = known ? status.online ? 'Painel conectado ao servidor.' : 'Nenhum painel respondeu nos últimos 45 segundos.' : 'Aguardando confirmação do servidor.';
-  });
+  const status = screenPresence.get(selected);
+  const badge = $('selected-presence');
+  const known = typeof status?.online === 'boolean';
+  badge.hidden = !selected;
+  badge.className = 'screen-presence ' + (known ? status.online ? 'online' : 'offline' : 'checking');
+  badge.textContent = known ? status.online ? 'Online' + (status.connected_devices > 1 ? ' · ' + status.connected_devices : '') : 'Offline' : 'Verificando';
+  badge.title = known ? status.online ? 'Dispositivo de exibição conectado. Prévias administrativas não contam como presença.' : 'Nenhum dispositivo respondeu nos últimos 45 segundos. Use Copiar link da TV para configurar a exibição.' : 'Aguardando confirmação do servidor.';
+  for (const option of $('screen-options').options) {
+    const screen = state?.screens.find(screen => screen.id === option.value);
+    const presence = screenPresence.get(option.value);
+    const label = screen.name + (typeof presence?.online === 'boolean' ? presence.online ? ' — Online' : ' — Offline' : '');
+    if (option.textContent !== label) option.textContent = label;
+  }
 }
+
 async function refreshPresence() {
   if (!currentUser || presenceChecking) return;
   presenceChecking = true;

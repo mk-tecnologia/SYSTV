@@ -10,7 +10,7 @@ export function createSecurityUI({ api, refreshSession, notice, user }) {
     const buttons = [...form.querySelectorAll('button')]; buttons.forEach(button => button.disabled = true);
     try { await work(); } finally { buttons.forEach(button => button.disabled = false); }
   }
-  async function finishLogin() { $('login-form').reset(); $('login-code-form').reset(); loginChallenge = null; loginView(); await refreshSession(); notice('Você entrou no painel.'); }
+  async function finishLogin() { $('login-form').reset(); $('login-code-form').reset(); loginChallenge = null; loginView(); await refreshSession(); notice(''); }
   $('forgot-password').onclick = () => loginView('forgot');
   $('forgot-back').onclick = () => loginView();
   $('login-code-back').onclick = () => { loginChallenge = null; $('login-code-form').reset(); loginView(); };

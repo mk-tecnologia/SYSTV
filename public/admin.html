@@ -22,12 +22,12 @@
       <button data-section="identity" data-admin><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#image"/></svg> Identidade da empresa</button>
       <button data-section="users"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#users"/></svg> Usuários e permissões</button>
       <button data-section="mail" data-admin><svg class="icon" aria-hidden="true"><use href="/icons.svg#mail"/></svg> E-mails</button>
-      <a id="sidebar-tv" target="_blank" rel="noopener"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#monitor"/></svg> Abrir painel da TV <svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#external"/></svg></a>
+      <a id="sidebar-tv" target="_blank" rel="noopener"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#monitor"/></svg> Prévia da TV <svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#external"/></svg></a>
     </nav>
   </div>
   <main>
     <header id="page-heading">
-      <div><div class="eyebrow">SEU NEGÓCIO, EM EXIBIÇÃO</div><h1 id="page-title">Produtos e preços</h1><p id="page-description">Atualize aqui. Suas TVs acompanham na hora.</p></div>
+      <div><h1 id="page-title">Produtos e preços</h1><p id="page-description">Atualize aqui. Suas TVs acompanham na hora.</p></div>
 
     </header>
     <div id="notice" role="status" aria-live="polite"></div>
@@ -49,39 +49,33 @@
     </section>
     <div id="workspace" hidden>
       <section id="products-section" class="admin-section">
-        <section class="card screen-picker" aria-labelledby="screen-picker-title">
-          <div class="screen-picker-heading"><div><span class="eyebrow">SUAS TELAS</span><h2 id="screen-picker-title">Qual TV você quer atualizar?</h2><p>Selecione uma tela para editar os produtos e preços que aparecem nela.</p></div><button class="secondary" id="add-screen" data-admin><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#plus"/></svg> Cadastrar TV</button></div>
-          <fieldset id="screen-options" class="screen-options"><legend class="sr-only">Escolha a TV para editar</legend></fieldset>
+        <section class="card screen-picker" aria-label="Selecionar TV">
+          <div class="screen-picker-controls"><label for="screen-options">TV em edição</label><select id="screen-options" aria-label="TV em edição"></select><span id="selected-presence" class="screen-presence" role="status"></span><button id="rename-screen" class="secondary" data-admin>Configurar TV</button><button class="secondary" id="add-screen" data-admin>Nova TV</button></div>
+          <div class="stats" aria-label="Resumo da TV"><span><strong id="count">0</strong> produtos</span><span><strong id="offers">0</strong> ofertas</span><span><strong id="screens-count">0</strong> TVs disponíveis</span><span>Sincronização: <strong class="live" id="connection">Conectando…</strong></span></div>
           <p id="no-permissions" class="permission-message" hidden>Você ainda não possui TVs autorizadas. Solicite acesso ao administrador.</p>
         </section>
-        <section class="stats">
-          <div class="card"><span>Produtos na TV</span><strong id="count">0</strong></div>
-          <div class="card"><span>Ofertas em destaque</span><strong id="offers">0</strong></div>
-          <div class="card"><span>TVs disponíveis</span><strong id="screens-count">0</strong></div>
-          <div class="card"><span>Sincronização</span><strong class="live" id="connection">Conectando…</strong></div>
-        </section>
         <section class="toolbar catalog-toolbar">
-          <div class="editing-context"><span>EDITANDO PRODUTOS DE</span><div class="editing-screen-line"><strong id="editing-screen" aria-live="polite"></strong><button id="rename-screen" class="secondary small" data-admin><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#settings"/></svg> Configurar TV</button></div><span id="rotation-summary"></span></div>
-          <a id="open-screen" class="button secondary" target="_blank" rel="noopener">Visualizar painel <svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#external"/></svg></a>
+          <div class="editing-context"><strong id="editing-screen" aria-live="polite"></strong><span id="rotation-summary"></span></div>
+          <button type="button" id="copy-screen-link" class="secondary">Copiar link da TV</button>
+          <a id="open-screen" class="button secondary" target="_blank" rel="noopener">Prévia da TV <svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#external"/></svg></a>
           <button id="add-product"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#plus"/></svg> Adicionar produto</button>
         </section>
         <div class="product-workspace">  <section id="editor" class="product-editor"><form id="product-form">
-    <div class="dialog-heading"><h2 id="editor-title">Novo produto</h2><button type="button" class="secondary" id="close-editor" aria-label="Limpar edição e cadastrar novo produto"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#plus"/></svg></button></div>
-    <p class="editor-intro">Cadastre ao lado da prévia ou selecione um produto do painel para editar.</p><p id="product-screen-context" class="product-screen-context"></p><div id="product-page-context" class="page-advice" role="status" aria-live="polite"></div>
+    <div class="dialog-heading"><h2 id="editor-title">Novo produto</h2><div id="product-order-actions" class="editor-order-actions" role="group" aria-label="Mover produto" hidden><button type="button" id="move-product-up" class="secondary" aria-label="Subir produto" title="Subir produto">↑</button><button type="button" id="move-product-down" class="secondary" aria-label="Descer produto" title="Descer produto">↓</button></div><button type="button" class="secondary" id="close-editor" aria-label="Limpar edição e cadastrar novo produto"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#plus"/></svg></button></div>
+    <p id="product-screen-context" class="sr-only"></p><div id="product-page-context" class="editor-meta" role="status" aria-live="polite"></div>
     <input name="id" type="hidden"><label>Nome do produto<input name="name" maxlength="120" required></label>
     <div class="form-row"><label>Preço (R$)<input name="price" type="text" inputmode="decimal" placeholder="49,90" required></label><label>Unidade<select name="unit" required><button type="button"><selectedcontent></selectedcontent></button></select></label><label>Ordem<input name="position" type="number" min="0" max="4294967295" step="1" required></label></div>
-    <div id="product-order-actions" class="form-row" role="group" aria-label="Mover produto" hidden><button type="button" id="move-product-up" class="secondary" aria-label="Subir produto" title="Subir produto">Subir</button><button type="button" id="move-product-down" class="secondary" aria-label="Descer produto" title="Descer produto">Descer</button></div>
-    <label class="check"><input name="highlight" type="checkbox"> Destacar como oferta na TV</label><p id="form-error" role="alert"></p><button><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#save"/></svg> Salvar e atualizar TV</button>
+    <label class="check"><input name="highlight" type="checkbox"> Destacar como oferta na TV</label><p id="form-error" role="alert"></p><button><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#save"/></svg> Salvar produto</button>
     <button type="button" id="delete-product" class="danger secondary" hidden><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#delete"/></svg> Excluir produto</button>
   </form></section><section class="card catalog">
-          <div id="catalog-pages" class="page-advice" role="status" aria-live="polite"></div><div class="catalog-heading"><div><h2>Produtos desta TV</h2><p id="catalog-description">As alterações serão enviadas à TV selecionada.</p></div><input id="search" type="search" placeholder="Buscar produto…" aria-label="Buscar produto"></div>
+          <div class="catalog-heading"><div><h2>Produtos desta TV</h2><p id="catalog-description">As alterações serão enviadas à TV selecionada.</p></div><input id="search" type="search" placeholder="Buscar produto…" aria-label="Buscar produto"></div>
           <div class="catalog-views"><div id="catalog-page-tabs" class="catalog-page-tabs" role="group" aria-label="Página do painel"></div><div class="catalog-view-switch" role="group" aria-label="Modo de visualização"><button type="button" id="view-preview" aria-pressed="true">Prévia da TV</button><button type="button" id="view-list" aria-pressed="false">Lista</button></div></div>
-          <p class="catalog-order-help">Arraste um produto sobre outro para mudar a ordem. A sequência é salva automaticamente. Pelo teclado, use Alt + ↑ ou Alt + ↓; no editor, use Subir e Descer.</p>
-          <div id="catalog-preview" class="catalog-preview"><p class="preview-instruction">Clique em um produto para editar. A posição corresponde ao painel de duas colunas da TV.</p><div id="catalog-preview-screen" class="catalog-preview-screen"><div id="catalog-preview-company" class="catalog-preview-company"></div><div id="catalog-preview-grid" class="catalog-preview-grid"></div><div class="catalog-preview-footer"><span id="catalog-preview-name"></span><span id="catalog-preview-page"></span></div></div></div>
+          <details class="catalog-help"><summary>Como editar e ordenar produtos</summary><p>Clique em um produto para editar. Arraste sobre outro para mudar a ordem; a sequência é salva automaticamente. Pelo teclado, use Alt + ↑ ou Alt + ↓, ou os botões Subir e Descer do editor. A ordem começa em 0 e desloca os demais produtos automaticamente.</p><p id="catalog-pages"></p></details>
+          <div id="catalog-preview" class="catalog-preview"><div id="catalog-preview-screen" class="catalog-preview-screen"><div id="catalog-preview-company" class="catalog-preview-company"></div><div id="catalog-preview-grid" class="catalog-preview-grid"></div><div class="catalog-preview-footer"><span id="catalog-preview-name"></span><span id="catalog-preview-page"></span></div></div></div>
           <div id="catalog-list" class="table-wrap" hidden><table role="table" aria-label="Produtos desta TV"><thead role="rowgroup"><tr role="row"><th role="columnheader" scope="col">PRODUTO</th><th role="columnheader" scope="col">PREÇO</th><th role="columnheader" scope="col">UNIDADE</th><th role="columnheader" scope="col">ORDEM</th><th role="columnheader" scope="col">EXIBIÇÃO NA TV</th><th role="columnheader" scope="col">AÇÕES</th></tr></thead><tbody id="products" role="rowgroup"></tbody></table></div>
           <p id="empty" hidden>Nenhum produto encontrado nesta TV.</p>
         </section>
-        </div><div class="screen-actions" data-admin><button id="delete-screen" class="danger secondary"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#delete"/></svg> Excluir TV selecionada</button></div>
+        </div>
       </section>
       <section id="units-section" class="admin-section" hidden>
         <section class="card catalog"><div class="catalog-heading"><div><h2>Unidades de venda</h2><p>Cadastre as unidades disponíveis para os produtos de todas as TVs. Unidades em uso não podem ser excluídas.</p></div><button id="add-unit"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#plus"/></svg> Nova unidade</button></div>
@@ -129,9 +123,10 @@
     <div class="screen-config-header"><span class="config-mark"><svg class="icon" aria-hidden="true"><use href="/icons.svg#monitor"/></svg></span><div><span class="eyebrow">PAINEL DE EXIBIÇÃO</span><h2 id="screen-dialog-title">Cadastrar uma TV</h2><p>Personalize a experiência desta tela.</p></div><button type="button" id="close-screen" class="secondary" aria-label="Fechar configuração"><svg class="icon" aria-hidden="true"><use href="/icons.svg#close"/></svg></button></div>
     <div class="screen-config-body"><div class="screen-config-fields">
       <section class="config-section"><h3>Identificação da TV</h3><p>Escolha um nome que ajude sua equipe a reconhecer o local.</p><label>Nome da localização<input name="name" maxlength="50" placeholder="Ex.: Balcão do açougue" required></label><small>Esse nome aparece no painel e nas permissões dos usuários.</small></section>
+      <section id="screen-display-link" class="config-section" hidden><h3>Link de exibição</h3><p>O link identifica esta TV automaticamente, sem login no dispositivo. Use Copiar link da TV para configurá-lo no navegador ou no gerenciador das telas.</p><label>Endereço de exibição<input id="screen-display-url" type="text" readonly autocomplete="off" spellcheck="false"></label><button type="button" id="renew-display-link" class="secondary danger">Renovar link de exibição</button><small>Renovar invalida o link anterior e desconecta os dispositivos desta TV.</small></section>
       <section class="config-section"><h3>Troca de páginas</h3><p>Quando o catálogo ocupar mais de uma tela, as páginas alternam automaticamente.</p><label>Intervalo de exibição<div class="interval-input"><input name="page_interval_seconds" type="number" min="5" max="300" step="1" value="15" required><span>segundos</span></div><small>Entre 5 e 300 segundos.</small></label></section>
     </div><section class="config-appearance"><div class="config-section-heading"><h3>Aparência do painel</h3><p>Escolha a combinação de cores para esta TV.</p></div><div id="screen-palette-preview" class="screen-palette-preview" aria-label="Prévia do painel"><div class="preview-header">Sua empresa</div><div class="preview-product"><span>Produto em oferta</span><strong>R$ 29,90 <small>KG</small></strong></div><div class="preview-product preview-normal"><span>Produto regular</span><strong>R$ 39,90 <small>UN</small></strong></div><div class="preview-footer"><span id="preview-screen-name">Nome da TV</span></div></div><fieldset class="palette-field"><legend class="sr-only">Esquema de cores do painel</legend><div id="palette-options" class="palette-options"></div></fieldset><p class="preview-caption">Prévia ilustrativa · As cores são aplicadas ao salvar.</p></section></div>
-    <div class="screen-config-actions"><p id="screen-error" role="alert"></p><div><button type="button" class="secondary" id="cancel-screen">Cancelar</button><button id="save-screen">Cadastrar TV</button></div></div>
+    <div class="screen-config-actions"><button type="button" id="delete-screen" class="danger secondary" data-admin>Excluir TV selecionada</button><p id="screen-error" role="alert"></p><div><button type="button" class="secondary" id="cancel-screen">Cancelar</button><button id="save-screen">Cadastrar TV</button></div></div>
   </form></dialog>
   <dialog id="user-dialog"><form id="user-form">
     <div class="dialog-heading"><h2 id="user-title">Novo usuário</h2><button type="button" class="secondary" id="close-user" aria-label="Fechar"><svg class="icon" aria-hidden="true" focusable="false"><use href="/icons.svg#close"/></svg></button></div>
