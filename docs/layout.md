@@ -80,6 +80,10 @@ acesso e os mesmos controles. Não acrescentar gradientes, raios ou sombras pró
   Produtos, unidades e usuários usam a mesma transformação, inclusive quando a
   tabela está ao lado do editor. A referência é a largura do painel, não só a janela.
 - Cada célula renderizada tem `data-label`; manter os papéis e cabeçalhos acessíveis.
+- A ordenação de produtos oferece arraste na prévia e na lista, com estados de
+  origem e destino baseados nos tokens semânticos. Manter alternativas por
+  teclado e pelos botões Subir/Descer do editor, sem depender do arraste em telas
+  de toque. A ordem é salva automaticamente, sem alterar os demais campos.
 - Ações usam `.row-actions` com botões de ícone e nome acessível/dica. Podem quebrar
   linha. Nunca esconder a ação ou deixar um botão invadir a coluna vizinha.
 - Não usar `overflow-x: hidden` no documento para disfarçar elementos largos.
@@ -116,8 +120,11 @@ node tests/fixtures/layout-preview.js
 
 A marca da prévia mostra a largura e o excesso horizontal medido pelo navegador.
 Ela só existe no servidor de testes. Esse servidor escuta apenas em `127.0.0.1`,
-não usa credenciais, não grava alterações e não faz parte do pacote de produção.
+não usa credenciais, não grava alterações em disco e não faz parte do pacote de produção.
 
 Executar `npm run check`, `ddev test` e `python3 tests/release.test.py`. Validar a
 sintaxe CSS com um parser. Testes de API e sintaxe não substituem conferência
 visual: registrar separadamente o que foi visto no navegador e o que ficou bloqueado.
+
+A reordenação da prévia fictícia pode ser exercitada em memória e é descartada
+ao reiniciar o servidor de testes. As demais alterações continuam bloqueadas.

@@ -1,4 +1,4 @@
-// Prévia local de dados fictícios. Não se conecta a banco e não entra no pacote de produção.
+// Prévia fictícia sem banco ou persistência. Reordenação somente em memória, descartada ao reiniciar.
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { demoProducts } from '../../database/demo.js';
@@ -41,6 +41,18 @@ const server = http.createServer(async (req, res) => {
       const timer = setInterval(() => res.write(': heartbeat\n\n'), 15000); req.on('close', () => clearInterval(timer)); return;
     }
     if (path === '/api/state') return json(res, state);
+    if (/^\/api\/products\/\d+\/position$/.test(path) && req.method === 'PUT') {
+      let body = ''; for await (const chunk of req) body += chunk;
+      const input = JSON.parse(body);
+      const product = state.products.find(item => item.id === Number(path.split('/')[3]));
+      if (!product || product.screen !== input.screen || !Number.isSafeInteger(input.position) || input.position < 0) {
+        res.writeHead(400, { 'Content-Type':'application/json' }); return res.end(JSON.stringify({error:'Posição de teste inválida.'}));
+      }
+      const ordered = state.products.filter(item => item.screen === product.screen && item.id !== product.id).sort((a,b) => a.position-b.position);
+      ordered.splice(Math.min(input.position,ordered.length),0,product);
+      ordered.forEach((item,index) => { item.position = index; });
+      return json(res,{ok:true});
+    }
     if (path === '/api/session') return json(res, { authenticated: !req.headers.cookie?.includes('layout-logged=no'), user: req.headers.cookie?.includes('layout-logged=no') ? null : user });
     if (path === '/api/users') return json(res, users);
     if (path === '/api/version') return json(res, { current: '2.7.0', latest: '2.7.1', status: 'checked', checked_at: new Date().toISOString(), update_available: true, release_url: 'https://github.com/mk-tecnologia/systv/releases' });

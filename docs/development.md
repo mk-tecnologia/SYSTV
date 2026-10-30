@@ -191,3 +191,39 @@ O cadastro de usuários tem e-mail único opcional para preservar contas existen
 A opção **Esqueci minha senha** envia um link de uso único, com validade de 10 minutos. A resposta é uniforme para endereços cadastrados e desconhecidos. A troca da senha encerra sessões e invalida solicitações pendentes, mas preserva o 2FA. Códigos de 2FA também valem por 10 minutos e aceitam até cinco tentativas; solicitações repetidas do mesmo tipo têm intervalo mínimo de 30 segundos. Os tokens são armazenados como hash e os códigos têm hash vinculado ao token da solicitação. Não são retornados na API nem registrados em logs.
 
 O controle de tentativas por IP é local à instância; em implantação com múltiplas instâncias, compartilhe esse limite com Redis ou mecanismo equivalente. A emissão e o consumo de solicitações usam o MariaDB compartilhado. Se o provedor ficar indisponível, o 2FA permanece exigido: restaure o envio SMTP em vez de desativar a proteção automaticamente. O envio SMTP é feito diretamente, com timeout, sem fila persistente; o usuário pode solicitar outra mensagem depois do intervalo permitido.
+
+
+## Ordenação dos produtos por TV
+
+Cada TV possui uma sequência de posições únicas, começando em zero. Ao inserir
+ou mover um produto para uma posição ocupada, os demais são deslocados mantendo
+a ordem relativa. Uma posição além do final é ajustada para o fim do catálogo.
+Excluir um produto fecha o espaço deixado por ele. Transferências entre TVs
+reorganizam as duas sequências e exigem permissão sobre ambas.
+
+As alterações acontecem numa transação serializada do catálogo. O índice único
+`products_screen_position_unique` protege a combinação TV/posição, inclusive
+contra gravações concorrentes. As posições temporárias da reorganização não
+ficam visíveis em estados confirmados.
+
+A migração `011_unique_product_order.sql` normaliza catálogos existentes conforme
+a sequência anteriormente exibida (`position,id`), preservando os produtos e
+seus identificadores. A importação de SQLite usa a mesma ordem relativa e
+normaliza as posições por TV.
+
+
+### Reordenação pela interface
+
+Na prévia e na lista de produtos, arraste um item sobre outro para ocupar a
+posição do destino. A ordem é salva automaticamente e os itens intermediários
+são deslocados. O arraste atua nos itens visíveis da página atual. Para mover
+entre páginas, use o campo Ordem ou os botões Subir/Descer do editor.
+
+Os botões do editor atendem também telas de toque. Produtos focados na prévia
+ou na lista aceitam Alt + seta para cima/baixo. Os limites da sequência desabilitam
+os movimentos correspondentes no editor. O campo numérico continua disponível.
+
+A rota `PUT /api/products/:id/position` recebe apenas TV e posição e não altera
+nome, preço, unidade ou oferta. A permissão é conferida na TV atual do produto;
+se o item mudou de TV, a operação exige atualizar o catálogo. A transação e o
+índice único são os mesmos usados na ordenação por formulário.

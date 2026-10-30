@@ -15,25 +15,27 @@ function screenProducts(id) {
 }
 function productPage(product) {
   const products = screenProducts(product.screen).filter(item => item.id !== product.id);
-  const index = products.filter(item => item.position < product.position || (item.position === product.position && (!product.id || item.id < product.id))).length;
+  const index = Math.min(product.position, products.length);
   return Math.floor(index / TV_PAGE_SIZE) + 1;
 }
 function updateProductPage() {
   if (!state) return;
   const form = $('product-form');
   const product = { screen: form.dataset.screen, id: Number(form.elements.id.value) || undefined, position: Number(form.elements.position.value) };
+  form.elements.position.max = screenProducts(product.screen).filter(item => item.id !== product.id).length;
   if (!product.screen || !Number.isInteger(product.position) || product.position < 0) return;
   const page = productPage(product);
   const count = screenProducts(product.screen).length + (product.id ? 0 : 1);
   const pages = Math.max(1, Math.ceil(count / TV_PAGE_SIZE));
   const interval = state.screens.find(screen => screen.id === product.screen)?.page_interval_seconds ?? 15;
-  $('product-page-context').textContent = `Este produto será exibido na ${pageLabel(page)}. ` + (pages > 1 ? `O catálogo terá ${pages} telas, alternadas a cada ${interval} segundos.` : 'O catálogo cabe na Tela 01.') + ' Layout de TV com duas colunas: até 34 produtos por tela. Em telas estreitas, são 17 por tela.';
+  $('product-page-context').textContent = `Este produto será exibido na ${pageLabel(page)}. ` + (pages > 1 ? `O catálogo terá ${pages} telas, alternadas a cada ${interval} segundos.` : 'O catálogo cabe na Tela 01.') + ' A ordem começa em 0. Ao ocupar uma posição, os demais produtos são deslocados automaticamente.';
 }
 const $ = id => document.getElementById(id);
 const money = value => (value / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 let screenPresence = new Map(), presenceChecking = false;
 let securityUI;
 let state, currentUser = null, selected = 'tv01', section = 'products', users = [];
+let draggedProduct = null, reorderPending = false, suppressProductClickUntil = 0;
 
 async function api(route, method = 'GET', data, binary = false) {
   const response = await fetch('/api/' + route, {
@@ -176,7 +178,7 @@ function renderScreenOptions(screens) {
 }
 
 function render() {
-  if (!state || !currentUser) return;
+  if (!state || !currentUser || draggedProduct) return;
   const screens = availableScreens();
   if (!screens.some(screen => screen.id === selected)) selected = screens[0]?.id || '';
   renderScreenOptions(screens);
@@ -189,6 +191,10 @@ function render() {
   $('add-product').disabled = !selected;
   $('product-form').querySelectorAll('input, select, button').forEach(input => input.disabled = !selected);
   $('delete-product').hidden = !state.products.some(product => product.id === Number($('product-form').elements.id.value));
+  const editingProduct = state.products.find(product => product.id === Number($('product-form').elements.id.value));
+  $('product-order-actions').hidden = !editingProduct;
+  $('move-product-up').disabled = reorderPending || !editingProduct || editingProduct.position === 0;
+  $('move-product-down').disabled = reorderPending || !editingProduct || editingProduct.position >= screenProducts(editingProduct.screen).length - 1;
   $('no-permissions').hidden = screens.length > 0;
   const products = screenProducts(selected);
   if (catalogScreen !== selected) { catalogScreen = selected; catalogPage = 0; resetProductEditor(); }
@@ -206,6 +212,8 @@ function render() {
   renderCatalogPreview(products, currentProducts, pages, selectedScreen, query);
   $('products').replaceChildren(...visible.map(product => {
     const tr = document.createElement('tr'); tr.setAttribute('role', 'row');
+    tr.tabIndex = 0; tr.setAttribute('aria-label', `${product.name}. Alt e seta para cima ou para baixo para mover.`);
+    bindProductReorder(tr, product);
     const fields = [['Produto', product.name + ' · ' + pageLabel(Math.floor(products.indexOf(product) / TV_PAGE_SIZE) + 1)], ['Preço', 'R$ ' + money(product.price)], ['Unidade', product.unit], ['Ordem', product.position], ['Exibição na TV', product.highlight ? 'Em oferta' : 'Preço normal']];
     for (const [label, value] of fields) {
       const td = document.createElement('td'); td.setAttribute('role', 'cell'); td.dataset.label = label; td.textContent = value; tr.append(td);
@@ -240,6 +248,73 @@ function render() {
   renderUnits();
   renderUnitOptions();
   if (section === 'users') renderUsers();
+}
+
+async function moveCatalogProduct(product, position) {
+  if (reorderPending || position < 0 || position >= screenProducts(product.screen).length || position === product.position) return;
+  reorderPending = true;
+  $('catalog-list').setAttribute('aria-busy', 'true');
+  $('catalog-preview').setAttribute('aria-busy', 'true');
+  $('move-product-up').disabled = $('move-product-down').disabled = true;
+  try {
+    await api(`products/${product.id}/position`, 'PUT', { screen: product.screen, position });
+    state = await api('state');
+    const saved = state.products.find(item => item.id === product.id);
+    const editing = state.products.find(item => item.id === Number($('product-form').elements.id.value));
+    if (editing) $('product-form').elements.position.value = editing.position;
+    if (saved && selected === product.screen) catalogPage = Math.floor(saved.position / TV_PAGE_SIZE);
+    notice('Ordem salva. TV atualizada.');
+  } catch (error) { notice(error.message, true); }
+  finally {
+    reorderPending = false;
+    $('catalog-list').removeAttribute('aria-busy'); $('catalog-preview').removeAttribute('aria-busy');
+    render();
+    const container = $(catalogView === 'list' ? 'products' : 'catalog-preview-grid');
+    container.querySelector(`[data-product="${product.id}"]`)?.focus({ preventScroll: true });
+  }
+}
+
+function clearProductDrag() {
+  draggedProduct = null;
+  document.querySelectorAll('.is-dragging, .is-drop-target').forEach(element => element.classList.remove('is-dragging', 'is-drop-target'));
+}
+
+function bindProductReorder(element, product) {
+  if (!state.products.some(item => item.id === product.id)) return;
+  element.classList.add('product-reorderable'); element.dataset.product = product.id;
+  element.draggable = !reorderPending;
+  element.addEventListener('dragstart', event => {
+    if (reorderPending) { event.preventDefault(); return; }
+    draggedProduct = { id: product.id, screen: selected };
+    event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', String(product.id));
+    element.classList.add('is-dragging');
+  });
+  element.addEventListener('dragover', event => {
+    if (!draggedProduct || draggedProduct.id === product.id || draggedProduct.screen !== selected) return;
+    event.preventDefault(); event.dataTransfer.dropEffect = 'move';
+    element.classList.add('is-drop-target');
+  });
+  element.addEventListener('dragleave', event => {
+    if (!element.contains(event.relatedTarget)) element.classList.remove('is-drop-target');
+  });
+  element.addEventListener('drop', event => {
+    if (!draggedProduct || draggedProduct.screen !== selected) return;
+    event.preventDefault(); event.stopPropagation();
+    const source = state.products.find(item => item.id === draggedProduct.id);
+    const target = state.products.find(item => item.id === product.id);
+    clearProductDrag(); suppressProductClickUntil = Date.now() + 400;
+    if (source && target && source.screen === target.screen) void moveCatalogProduct(source, target.position);
+  });
+  element.addEventListener('dragend', () => {
+    clearProductDrag(); suppressProductClickUntil = Date.now() + 400;
+    if (!reorderPending) render();
+  });
+  element.addEventListener('keydown', event => {
+    if (!event.altKey || !['ArrowUp', 'ArrowDown'].includes(event.key)) return;
+    event.preventDefault();
+    const current = state.products.find(item => item.id === product.id);
+    if (current) void moveCatalogProduct(current, current.position + (event.key === 'ArrowUp' ? -1 : 1));
+  });
 }
 
 async function deleteProduct(product, button) {
@@ -379,6 +454,12 @@ $('search').oninput = () => {
 $('view-preview').onclick = () => { catalogView = 'preview'; render(); };
 $('view-list').onclick = () => { catalogView = 'list'; render(); };
 $('add-product').onclick = () => openEditor();
+for (const [id, offset] of [['move-product-up', -1], ['move-product-down', 1]]) {
+  $(id).onclick = () => {
+    const product = state.products.find(item => item.id === Number($('product-form').elements.id.value));
+    if (product) return moveCatalogProduct(product, product.position + offset);
+  };
+}
 $('delete-product').onclick = () => {
   const product = state.products.find(product => product.id === Number($('product-form').elements.id.value));
   if (product) return deleteProduct(product, $('delete-product'));
@@ -506,7 +587,7 @@ $('user-form').onsubmit = async event => {
 securityUI = createSecurityUI({ api, refreshSession, notice, user: () => currentUser });
 try { state = await api('state'); await refreshSession(); await securityUI.prepareReset(); } catch (error) { setUser(null); notice(error.message, true); }
 const events = new EventSource('/api/events');
-events.onmessage = event => { state = JSON.parse(event.data); $('connection').textContent = 'Ao vivo'; render(); };
+events.onmessage = event => { state = JSON.parse(event.data); $('connection').textContent = 'Ao vivo'; if (!draggedProduct && !reorderPending) render(); };
 events.onerror = () => $('connection').textContent = 'Reconectando…';
 setInterval(() => { if (currentUser) refreshSession().catch(error => notice(error.message, true)); }, 30000);
 window.addEventListener('focus', () => { if (currentUser) refreshSession().catch(error => notice(error.message, true)); });
@@ -597,11 +678,12 @@ function renderCatalogPreview(products, current, pages, screen, query) {
   if (hasDraft) {
     const price = Number(fields.price.value.replace(',', '.'));
     const draft = { id: editingId || Number.MAX_SAFE_INTEGER, name: fields.name.value.trim(), price: Number.isFinite(price) ? Math.round(price * 100) : 0, unit: fields.unit.value, position: Number(fields.position.value), highlight: fields.highlight.checked, draft: true };
-    const previewProducts = products.filter(item => item.id !== editingId).concat(draft).sort((a,b) => a.position - b.position || a.id - b.id);
+    const previewProducts = products.filter(item => item.id !== editingId);
+    previewProducts.splice(Math.min(Math.max(0, draft.position), previewProducts.length), 0, draft);
+    products = previewProducts.map((item, position) => ({ ...item, position }));
     pages = Math.max(1, Math.ceil(previewProducts.length / TV_PAGE_SIZE));
     catalogPage = Math.min(catalogPage, pages - 1);
-    current = previewProducts.slice(catalogPage * TV_PAGE_SIZE, (catalogPage + 1) * TV_PAGE_SIZE);
-    products = previewProducts;
+    current = products.slice(catalogPage * TV_PAGE_SIZE, (catalogPage + 1) * TV_PAGE_SIZE);
   }
   $('editor-title').textContent = editingId ? 'Editar produto' : 'Novo produto';
   const tabs = $('catalog-page-tabs');
@@ -633,17 +715,18 @@ function renderCatalogPreview(products, current, pages, screen, query) {
   grid.replaceChildren(...current.map((product, index) => {
     const button = document.createElement('button'); button.type = 'button';
     button.className = 'catalog-preview-product' + (product.highlight ? ' highlighted' : '');
+    bindProductReorder(button, product);
     button.classList.toggle('editing-product', Boolean(product.draft));
     if (product.draft) button.title = 'Prévia das alterações · Ainda não salvo';
     button.classList.toggle('search-muted', Boolean(query) && !product.name.toLocaleLowerCase().includes(query));
     const column = Math.floor(index / rows) + 1, row = index % rows + 1;
-    button.setAttribute('aria-label', `${product.name}, ordem ${product.position}, ${pageLabel(catalogPage + 1)}, coluna ${column}, linha ${row}. Editar produto.`);
-    button.title = `Coluna ${column} · Linha ${row} · Clique para editar`;
+    button.setAttribute('aria-label', `${product.name}, ordem ${product.position}, ${pageLabel(catalogPage + 1)}, coluna ${column}, linha ${row}. Editar produto. Alt e seta para cima ou para baixo para mover.`);
+    button.title = `Coluna ${column} · Linha ${row} · Clique para editar ou arraste para mover`;
     const name = document.createElement('span'); name.className = 'preview-product-name'; name.textContent = product.name;
     const order = document.createElement('span'); order.className = 'preview-product-order'; order.textContent = 'Ordem ' + product.position;
     const price = document.createElement('strong'); price.textContent = 'R$ ' + money(product.price);
     const unit = document.createElement('small'); unit.textContent = product.unit;
-    price.append(unit); button.append(order, name, price); button.onclick = () => { if (!product.draft) openEditor(product); }; return button;
+    price.append(unit); button.append(order, name, price); button.onclick = () => { if (!product.draft && !reorderPending && Date.now() >= suppressProductClickUntil) openEditor(product); }; return button;
   }));
   if (!current.length) { const empty = document.createElement('p'); empty.className = 'catalog-preview-empty'; empty.textContent = 'Adicione produtos para visualizar este painel.'; grid.append(empty); }
 }
@@ -652,6 +735,7 @@ function resetProductEditor() {
   const form = $('product-form'); form.reset(); form.dataset.screen = selected;
   form.elements.id.value = ''; form.elements.position.value = Math.max(-1, ...screenProducts(selected).map(product => product.position)) + 1;
   $('delete-product').hidden = true;
+  $('product-order-actions').hidden = true;
   renderUnitOptions(); form.elements.unit.value = state.units.some(unit => unit.code === 'KG') ? 'KG' : state.units[0]?.code || '';
   $('editor-title').textContent = 'Novo produto';
   $('product-screen-context').textContent = 'TV: ' + (state.screens.find(screen => screen.id === selected)?.name || '');
