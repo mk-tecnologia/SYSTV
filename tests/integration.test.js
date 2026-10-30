@@ -165,14 +165,23 @@ test('API com MariaDB real, múltiplas TVs e sessões persistentes', { timeout: 
 
     const product = { name: "Coração d'água 🥩", price: 1234, unit: 'UN', screen: 'tv01', highlight: true, position: 100 };
     let productId;
-    await t.test('cores individuais por TV e validação de esquema', async () => {
+    await t.test('cores individuais por TV, oferta ativada/desativada e validação de esquema', async () => {
       const screen = (await (await call('state')).json()).screens.find(screen => screen.id === 'tv01');
       assert.equal(screen.color_scheme, 'classic');
       assert.equal((await call('screens/tv01', 'PUT', { name: screen.name, color_scheme: 'invalid' })).status, 400);
-      for (const color_scheme of ['navy', 'graphite', 'forest', 'plum', 'ivory', 'classic']) {
+      const offerResponse = await call('products', 'POST', { ...product, name: 'Oferta para validar paletas' });
+      assert.equal(offerResponse.status, 200);
+      const offerId = (await offerResponse.json()).id;
+      for (const color_scheme of ['navy', 'graphite', 'forest', 'plum', 'ivory', 'midnight', 'wine', 'coffee', 'ice', 'sage', 'peach', 'classic']) {
         assert.equal((await call('screens/tv01', 'PUT', { name: screen.name, color_scheme })).status, 200);
-        assert.equal((await (await call('state')).json()).screens.find(screen => screen.id === 'tv01').color_scheme, color_scheme);
+        for (const highlight of [true, false]) {
+          assert.equal((await call('products', 'PUT', { ...product, id: offerId, highlight })).status, 200);
+          const savedState = await (await call('state')).json();
+          assert.equal(savedState.screens.find(screen => screen.id === 'tv01').color_scheme, color_scheme);
+          assert.equal(savedState.products.find(item => item.id === offerId).highlight, Number(highlight));
+        }
       }
+      assert.equal((await call('products/' + offerId, 'DELETE')).status, 200);
     });
 
     await t.test('unidades dinâmicas, validação, sigla em cascata e exclusão protegida', async () => {

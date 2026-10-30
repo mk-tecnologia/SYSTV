@@ -156,3 +156,40 @@ Validação funcional, separada da visual:
 - A conexão do Chrome, inicialmente indisponível, foi restabelecida após o usuário
   habilitá-la. Conferência visual concluída; bloqueio anterior resolvido.
 - GitHub e produção continuam na versão 2.7.4 publicada anteriormente.
+
+## Seis novas paletas de TV — 2026-10-30 (local)
+
+- Acrescentadas Noturno, Bordô, Café, Gelo, Sálvia e Pêssego, preservando as seis
+  opções anteriores. Seleção, prévia administrativa e TV usam o mesmo módulo.
+- Referência: WCAG 2.2 SC 1.4.6, contraste reforçado. O teste calcula luminância
+  relativa sRGB e exige ao menos 7:1 para texto/fundo, texto/linha, oferta/linha,
+  rodapé/fundo e texto branco/marcador das novas paletas. Não é uma declaração
+  de conformidade AAA do sistema inteiro.
+- Validação funcional: 46 testes via `ddev test`, incluindo contraste e gravação/
+  leitura das doze opções na API, além de `npm run check` e dois testes de release,
+  aprovados. Não houve mudança no CSS nesta etapa.
+- Validação visual pendente: a conexão do Chrome estava indisponível e o controle
+  nativo falhou duas vezes ao iniciar. Não foram validadas aparência, navegação
+  por teclado nem distribuição das doze opções em desktop/celular nesta revisão.
+- A fixture permite trocar a paleta em memória para conferir prévia e TV sem
+  tocar no banco real. Reiniciar descarta a escolha; demais gravações bloqueadas,
+  exceto a reordenação já existente.
+- Alterações locais: GitHub e produção permanecem em 2.7.5.
+
+## Destaque de ofertas nas doze paletas — 2026-10-30 (local)
+
+- Revisão da implementação: a TV aplica `highlighted` ao artigo inteiro; a prévia
+  do catálogo aplica a mesma classe ao produto; a configuração usa a cor de oferta
+  na amostra e a cor regular na linha `preview-normal`. Todas usam `accent` da
+  paleta escolhida, distinguindo nomes, preços e unidades das ofertas.
+- Teste com MariaDB: em cada uma das doze paletas, salvar produto com destaque
+  ativado e desativado preserva a paleta e retorna o estado correto (1/0) na API.
+- Teste de contraste ampliado para todas as paletas: texto regular, ofertas,
+  rodapé e marcador atendem ao mínimo AA de 4,5:1. Ofertas sobre a linha variam
+  de 6,88:1 (Marfim) a 13,96:1 (Café); as seis novas continuam atendendo a 7:1.
+- Resultado final: 47 testes aprovados via `ddev test`, incluindo os dois testes
+  de paletas; sintaxe, testes de release e `git diff --check` aprovados.
+- Conferência visual permanece pendente: Chrome indisponível no conector e falha
+  ao iniciar o controle nativo. Nenhuma aparência foi declarada validada com base
+  somente na revisão de código ou nos testes de API.
+- Alterações continuam locais, sem publicação ou mudança na produção.

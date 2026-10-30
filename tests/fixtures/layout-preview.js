@@ -1,7 +1,8 @@
-// Prévia fictícia sem banco ou persistência. Reordenação somente em memória, descartada ao reiniciar.
+// Prévia fictícia sem banco ou persistência. Ordem e paleta somente em memória, descartadas ao reiniciar.
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { demoProducts } from '../../database/demo.js';
+import { TV_PALETTES } from '../../public/tv-palettes.js';
 
 const port = Number(process.env.SYSTV_LAYOUT_PORT || 4178);
 const user = { id: 1, name: 'Administrador', username: 'admin', email: null, role: 'admin', active: true, screens: ['tv01', 'tv02'], two_factor_enabled: false };
@@ -55,6 +56,15 @@ const server = http.createServer(async (req, res) => {
     }
     if (/^\/api\/screens\/[^/]+\/display-devices$/.test(path) && req.method === 'POST') {
       return json(res, {token:'b'.repeat(64)});
+    }
+    if (/^\/api\/screens\/[^/]+$/.test(path) && req.method === 'PUT') {
+      let body = ''; for await (const chunk of req) body += chunk;
+      const input = JSON.parse(body), screen = state.screens.find(item => item.id === path.split('/')[3]);
+      if (!screen || !TV_PALETTES.some(palette => palette.id === input.color_scheme)) {
+        res.writeHead(400); return res.end();
+      }
+      screen.color_scheme = input.color_scheme;
+      return json(res, {id: screen.id});
     }
     if (/^\/api\/products\/\d+\/position$/.test(path) && req.method === 'PUT') {
       let body = ''; for await (const chunk of req) body += chunk;

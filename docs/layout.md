@@ -114,7 +114,12 @@ acesso e os mesmos controles. Não acrescentar gradientes, raios ou sombras pró
 A exibição de preços tem uma finalidade diferente da administração. A grade e as
 fontes se ajustam ao visor para manter os preços completos e legíveis. Preservar
 as variáveis `--tv-*`, `--preview-*`, `--price-font`, `--name-font`, `--rows` e
-`--columns`. As seis paletas devem ser refletidas na prévia e no painel real.
+`--columns`. As doze paletas devem ser refletidas na prévia e no painel real. Nas seis novas
+paletas (Noturno, Bordô, Café, Gelo, Sálvia e Pêssego), exigir contraste de pelo
+menos 7:1 para texto/fundo, texto/linha, oferta/linha, rodapé/fundo e branco/marcador.
+A referência é o contraste reforçado da WCAG 2.2, critério 1.4.6:
+https://www.w3.org/WAI/WCAG22/Understanding/contrast-enhanced.html.
+Isso valida as combinações de cores, sem declarar conformidade AAA do sistema inteiro.
 O botão Copiar link da TV entrega o endereço para exibição e monitoramento
 sem login no aparelho. Prévia da TV não altera a presença. A configuração oferece
 o endereço somente para leitura e renovação explícita com confirmação. Não
@@ -150,5 +155,5 @@ Executar `npm run check`, `ddev test` e `python3 tests/release.test.py`. Validar
 sintaxe CSS com um parser. Testes de API e sintaxe não substituem conferência
 visual: registrar separadamente o que foi visto no navegador e o que ficou bloqueado.
 
-A reordenação da prévia fictícia pode ser exercitada em memória e é descartada
+A reordenação e a troca de paleta da prévia fictícia podem ser exercitadas em memória e são descartadas
 ao reiniciar o servidor de testes. As demais alterações continuam bloqueadas.

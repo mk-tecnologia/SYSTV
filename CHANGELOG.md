@@ -1,5 +1,10 @@
 # Histórico
 
+## 2.7.6
+
+- Adiciona seis paletas de alto contraste para as TVs: Noturno, Bordô, Café, Gelo, Sálvia e Pêssego. As novas combinações de texto, ofertas e rodapé têm contraste mínimo de 7:1, com verificação automatizada.
+- Verifica ativação e desativação de ofertas nas doze paletas e garante contraste mínimo AA para as combinações de texto existentes.
+
 ## 2.7.5
 
 - Exibe o nome e o status de todas as TVs autorizadas em uma lista compacta sempre visível, com totais online/offline e seleção direta para edição. Falhas de consulta aparecem como sem confirmação.
